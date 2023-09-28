@@ -20,15 +20,15 @@ const Point2D FLEA_START_POS{ 400, SECOND_FLOOR_HEIGHT - 35 };
 const Vector2D PLAYER_VELOCITY_DEFAULT{ 0, 0 };
 const Vector2D PLAYER_VELOCITY_WALK{ 10, 0 };
 
-const Vector2D PLAYER_VELOCITY_JUMP{ 0, -9 };
-const Vector2D PLAYER_VELOCITY_JUMP_LEFT{ -3, -9 };
-const Vector2D PLAYER_VELOCITY_JUMP_RIGHT{ 3, -9 };
+const Vector2D PLAYER_VELOCITY_JUMP{ 0, -8 };
+const Vector2D PLAYER_VELOCITY_JUMP_LEFT{ -5, -8 };
+const Vector2D PLAYER_VELOCITY_JUMP_RIGHT{ 5, -8 };
 
-const float FALL_MULTIPLIER{ 4.5f };
-const float LOW_JUMP_MULTIPLIER{ 4.0f };
+const float FALL_MULTIPLIER{ 7.0f };
+const float LOW_JUMP_MULTIPLIER{ 5.5f };
 
-const Vector2D PLAYER_VELOCITY_FALL_RIGHT{ 5, 5 };
-const Vector2D PLAYER_VELOCITY_FALL_LEFT{ -5, 5 };
+const Vector2D PLAYER_VELOCITY_FALL_RIGHT{ 15, 0 };
+const Vector2D PLAYER_VELOCITY_FALL_LEFT{ -15, 0 };
 
 const Vector2D PLAYER_AABB{ 30, 45 };
 const Vector2D PLAYER_AABB_BOTTOM{ 15, 48 };
@@ -36,10 +36,12 @@ const Vector2D PLAYER_AABB_UPPER{ 30, 25 };
 
 const Vector2D PLATFORM_AABB{ 20, 20 };
 
-const Vector2D GRAVITY_ACCELERATION{ 0, 0.5f };
-const Vector2D GRAVITY{ 0, 9.f };
+const Vector2D GRAVITY_ACCELERATION{ 0, 0.9f };
+const Vector2D GRAVITY{ 0, 8.f };
 const Vector2D ACCELERATION{ 0, 0.5f };
 const Vector2D FRICTION{ 0.5f, 0.5f };
+
+Point2D cameraPos{ 0, 0 };
 
 const float DELTA_TIME{ 0.016f };
 
@@ -66,6 +68,7 @@ enum GameObjectType
 	TYPE_FLEA,
 	TYPE_PLATFORM,
 	TYPE_LADDER,
+	TYPE_TREAT,
 	TYPE_SPECIAL,
 	TYPE_BOX,
 };
@@ -83,13 +86,14 @@ struct Platform1
 {
 	int platformSpacing{ 30 };
 	int grassSpacing{ 35 };
+	int ladderOffset{ grassSpacing + 5 };
 
 	int groundFloorHeight{ GROUND_FLOOR_HEIGHT };
 	int secondFloorHeight{ SECOND_FLOOR_HEIGHT };
 	int thirdFloorHeight{ THIRD_FLOOR_HEIGHT };
 
-	std::vector <int> groundFloorPosX{ 0 };
-	std::vector <int> groundFloorWidth{ 45 };
+	std::vector <int> groundFloorPosX{ -1000 };
+	std::vector <int> groundFloorWidth{ 450 };
 
 	std::vector <int> secondFloorPosX{ 350, 800 };
 	std::vector <int> secondFloorWidth{ 10, 10 };	
@@ -97,9 +101,18 @@ struct Platform1
 	std::vector <int> thirdFloorPosX{ 150, 500, 900 };
 	std::vector <int> thirdFloorWidth{ 3, 5, 5 };
 
-	std::vector <int> ladderPosX{ 350 - grassSpacing };
-	std::vector <int> ladderPosY{ GROUND_FLOOR_HEIGHT - grassSpacing - 5 };
+	std::vector <int> ladderPosX{ 350 - ladderOffset + 1 };
+	std::vector <int> ladderPosY{ GROUND_FLOOR_HEIGHT - ladderOffset };
 	std::vector <int> ladderHeight{ 5 };
+};
+
+struct CatTreats
+{
+	std::vector <int> salmonPosX{ 180 };
+	std::vector <int> salmonPosY{ THIRD_FLOOR_HEIGHT - 50 };
+
+	std::vector <int> legPosX{ 520 };
+	std::vector <int> legPosY{ THIRD_FLOOR_HEIGHT - 50 };
 };
 
 struct Flags
@@ -129,6 +142,7 @@ struct GameState
 Flags flags;
 GameState gameState;
 Platform1 platform1;
+CatTreats catTreats;
 
 void Draw();
 void DrawLevelOne();
@@ -150,6 +164,7 @@ void SetFloor();
 void Fall();
 void WalkingDurationControl(float time);
 void UpdateFleas();
+void CatTreatsPlacement();
 
 float DotProduct(const Vector2D& v1, const Vector2D& v2);
 void Normalise(Vector2D& v);
@@ -175,6 +190,11 @@ void MainGameEntry( PLAY_IGNORE_COMMAND_LINE )
 // Called by PlayBuffer every frame (60 times a second!)
 bool MainGameUpdate( float elapsedTime )
 {
+	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
+	Point2D cameraPos = { objPlayer.pos.x - 600, 0 };
+	Play::SetCameraPosition(cameraPos);
+
+	cameraPos = Play::GetCameraPosition();
 
 	switch (gameState.state)
 	{
@@ -218,6 +238,7 @@ int MainGameExit( void )
 void CreateGamePlay()
 {
 	CreatePlatform();
+	CatTreatsPlacement();
 	Play::MoveSpriteOrigin("cat_go_right", 0, -3);
 	Play::MoveSpriteOrigin("cat_go_left", 0, -3);
 
@@ -231,6 +252,32 @@ void CreateGamePlay()
 	GameObject& objFlea = Play::GetGameObject(id);
 	objFlea.scale = 3.5f;
 	objFlea.animSpeed = .05f;
+}
+
+void CatTreatsPlacement()
+{
+
+	for (int i = 0; i < catTreats.salmonPosX.size(); i++)
+	{
+		int id = Play::CreateGameObject(
+			TYPE_TREAT,
+			Point2D{ catTreats.salmonPosX[i], catTreats.salmonPosY[i] },
+			10,
+			"salmon");
+		GameObject& salmon = Play::GetGameObject(id);
+		salmon.scale = 2.5f;
+	}
+
+	for (int i = 0; i < catTreats.legPosX.size(); i++)
+	{
+		int id = Play::CreateGameObject(
+			TYPE_TREAT,
+			Point2D{ catTreats.legPosX[i], catTreats.legPosY[i] },
+			10,
+			"leg");
+		GameObject& leg = Play::GetGameObject(id);
+		leg.scale = 2.5f;
+	}	
 }
 
 void CreatePlatform()
@@ -306,16 +353,20 @@ void DrawGameStats()
 {
 	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
 	GameObject& objFlea = Play::GetGameObjectByType(TYPE_FLEA);
+
+	Play::SetDrawingSpace(Play::SCREEN);
 	
 	Play::DrawFontText("64px", "floor: " + std::to_string(gameState.floor), { DISPLAY_WIDTH - 200, 50 }, Play::CENTRE);
 	Play::DrawFontText("64px", "cat vx: " + std::to_string(objPlayer.velocity.x), { DISPLAY_WIDTH - 150, 100 }, Play::CENTRE);
 	Play::DrawFontText("64px", "cat vy: " + std::to_string(objPlayer.velocity.y), { DISPLAY_WIDTH - 150, 150 }, Play::CENTRE);
 	Play::DrawFontText("64px", "Cat state: " + std::to_string(gameState.playerState), { DISPLAY_WIDTH - 400, 50 }, Play::CENTRE);
-	//Play::DrawFontText("64px", "flea: " + std::to_string(objFlea.animSpeed), { DISPLAY_WIDTH - 400, 100 }, Play::CENTRE);
+	//Play::DrawFontText("64px", "CAMERA: " + std::to_string(cameraPos.y), { DISPLAY_WIDTH - 400, 100 }, Play::CENTRE);
 	//Play::DrawFontText("105px", (gameState.powerActivated) ? "SHIELD ACTIVATED" : "", { DISPLAY_WIDTH / 2 , 150 }, Play::CENTRE);
 	//Play::DrawFontText("132px", "Level: " + std::to_string(gameState.level), { DISPLAY_WIDTH / 2, 50 }, Play::CENTRE);
 	//Play::DrawFontText("132px", (gameState.levelInfo) ? "LEVEL " + std::to_string(gameState.level) : "", { DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2 }, Play::CENTRE);
 	//Play::DrawFontText("64px", "Collisions: " + std::to_string(gameState.asteroidCollisions), { 300, 100 }, Play::CENTRE);
+
+	Play::SetDrawingSpace(Play::WORLD);
 }
 
 void UpdatePlatform()
@@ -343,7 +394,7 @@ void UpdatePlayer()
 {
 	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
 	SetFloor();
-	LoopObject(objPlayer);
+	//LoopObject(objPlayer);
 
 	switch (gameState.playerState)
 	{           
@@ -393,7 +444,7 @@ void WalkingDurationControl(float time)
 {
 	if (gameState.playerState == STATE_WALK)
 	{
-		if (walkTimer > 0.5f)
+		if (walkTimer > 0.7f)
 		{
 			gameState.playerState = STATE_GROUNDED;
 			walkTimer = 0.f;
@@ -409,6 +460,8 @@ void Jump()
 
 	if (IsPlayerCollidingLadder())
 		gameState.playerState = STATE_ATTACHED;
+
+	
 
 	if (flags.right)
 		Play::SetSprite(objPlayer, "cat_jump_right", 0.05f);                 
@@ -445,14 +498,20 @@ void Jump()
 		if (IsPlayerCollidingUpperPart(platform))
 			gameState.playerState = STATE_FALL;
 		
-		if (IsPlayerCollidingBottomPart(platform) && jumpTimer > 0.5f)
+		if (IsPlayerCollidingBottomPart(platform) && jumpTimer > 0.3f)
 		{	
 			objPlayer.velocity = PLAYER_VELOCITY_DEFAULT;
 			gameState.playerState = STATE_GROUNDED;
 			SetPlayerPos();
 			jumpTimer = 0.f;
-		}	
+ 		}	
 	}
+ 
+	if (IsPlayerStillCollidingLadder())
+	{
+		gameState.playerState = STATE_GROUNDED;
+		objPlayer.velocity = PLAYER_VELOCITY_DEFAULT;
+	} 
 }
 
 void SetPlayerPos()
@@ -484,9 +543,9 @@ void WalkingPlayerControls()
 	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
 	
 	if (flags.right)
-		Play::SetSprite(objPlayer, "cat_go_right", 0.1f);
+		Play::SetSprite(objPlayer, "cat_go_right", 0.5f);
 	else
-		Play::SetSprite(objPlayer, "cat_go_left", 0.1f);
+		Play::SetSprite(objPlayer, "cat_go_left", 0.5f);
 
 
 	if (!IsPlayerCollidingAnyPlatform() && !IsPlayerStillCollidingLadder() && objPlayer.pos.y < PLAYER_START_POS.y)
@@ -497,12 +556,12 @@ void WalkingPlayerControls()
 
  	if (Play::KeyDown(VK_RIGHT))
 	{   
-		objPlayer.pos.x += 5;
+		objPlayer.pos.x += 10;
 		flags.right = true;	
 	}
 	else if (Play::KeyDown(VK_LEFT))
 	{
-		objPlayer.pos.x -= 5;
+		objPlayer.pos.x -= 10;
 		flags.right = false;
 	}
 
@@ -570,13 +629,13 @@ void AttachedPlayerControls()
 	if (flags.right)
 	{
 		objPlayer.rotation = Play::DegToRad(-90);
-		Play::SetSprite(objPlayer, "cat_walk_right", 0.1f);
+		Play::SetSprite(objPlayer, "cat_walk_right", 0.f);
 		//objPlayer.pos.x = ladderPos.x - PLATFORM_AABB.x;
 	}
 	else
 	{
 		objPlayer.rotation = Play::DegToRad(90);
-		Play::SetSprite(objPlayer, "cat_walk_left", 0.1f);
+		Play::SetSprite(objPlayer, "cat_walk_left", 0.f);
 		//objPlayer.pos.x = ladderPos.x + PLATFORM_AABB.x;
 	}
 
@@ -810,6 +869,7 @@ void Draw()
 	if (gameState.level == 1)
 		DrawLevelOne();
 
+
 	DrawGameStats();
 
 	Play::PresentDrawingBuffer();
@@ -833,6 +893,12 @@ void DrawLevelOne()
 		Play::DrawObjectRotated(platform);
 	}
 
+	std::vector <int> vTreats = Play::CollectGameObjectIDsByType(TYPE_TREAT);
+	for (int treatId : vTreats)
+	{
+		GameObject& treat = Play::GetGameObject(treatId);
+		Play::DrawObjectRotated(treat);
+	}
 	
 
 	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
