@@ -6,6 +6,8 @@ constexpr int DISPLAY_WIDTH = 1280;
 constexpr int DISPLAY_HEIGHT = 720;
 constexpr int DISPLAY_SCALE = 1;
 
+const int CAMERA_OFFSET_X{ 600 };
+
 const int GROUND_FLOOR_HEIGHT{ DISPLAY_HEIGHT - 40 };
 const int SECOND_FLOOR_HEIGHT{ DISPLAY_HEIGHT - 200 };
 const int THIRD_FLOOR_HEIGHT{ DISPLAY_HEIGHT - 440 };
@@ -20,9 +22,9 @@ const Point2D FLEA_START_POS{ 400, SECOND_FLOOR_HEIGHT - 35 };
 const Vector2D PLAYER_VELOCITY_DEFAULT{ 0, 0 };
 const Vector2D PLAYER_VELOCITY_WALK{ 10, 0 };
 
-const Vector2D PLAYER_VELOCITY_JUMP{ 0, -8 };
-const Vector2D PLAYER_VELOCITY_JUMP_LEFT{ -5, -8 };
-const Vector2D PLAYER_VELOCITY_JUMP_RIGHT{ 5, -8 };
+const Vector2D PLAYER_VELOCITY_JUMP{ 0, -10 };
+const Vector2D PLAYER_VELOCITY_JUMP_LEFT{ -5, -10 };
+const Vector2D PLAYER_VELOCITY_JUMP_RIGHT{ 5, -10 };
 
 const float FALL_MULTIPLIER{ 7.0f };
 const float LOW_JUMP_MULTIPLIER{ 5.5f };
@@ -33,11 +35,12 @@ const Vector2D PLAYER_VELOCITY_FALL_LEFT{ -15, 0 };
 const Vector2D PLAYER_AABB{ 30, 45 };
 const Vector2D PLAYER_AABB_BOTTOM{ 15, 48 };
 const Vector2D PLAYER_AABB_UPPER{ 30, 25 };
+const Vector2D TREATS_AABB{ 20, 20 };
 
 const Vector2D PLATFORM_AABB{ 20, 20 };
 
 const Vector2D GRAVITY_ACCELERATION{ 0, 0.9f };
-const Vector2D GRAVITY{ 0, 8.f };
+const Vector2D GRAVITY{ 0, 12.f };
 const Vector2D ACCELERATION{ 0, 0.5f };
 const Vector2D FRICTION{ 0.5f, 0.5f };
 
@@ -47,6 +50,7 @@ const float DELTA_TIME{ 0.016f };
 
 float walkTimer = 0.f;
 float jumpTimer = 0.f;
+float animationTimer = 0.f;
 float gravityMultiplyer = 1.f;
 Point2D platformPos{ 0, 0 };
 Point2D ladderPos{ 0, 0 };
@@ -71,6 +75,7 @@ enum GameObjectType
 	TYPE_TREAT,
 	TYPE_SPECIAL,
 	TYPE_BOX,
+	TYPE_DESTROYED,
 };
 
 enum GameFlow
@@ -104,12 +109,16 @@ struct Platform1
 	std::vector <int> ladderPosX{ 350 - ladderOffset + 1 };
 	std::vector <int> ladderPosY{ GROUND_FLOOR_HEIGHT - ladderOffset };
 	std::vector <int> ladderHeight{ 5 };
+
+	// position of the top tile top edge of the ladder
+	int ladderTopFloorSecond{ PLAYER_POS_SECOND_FLOOR + 35 };
+	int ladderTopFloorThird{ PLAYER_POS_THIRD_FLOOR + 35 };
 };
 
 struct CatTreats
 {
-	std::vector <int> salmonPosX{ 180 };
-	std::vector <int> salmonPosY{ THIRD_FLOOR_HEIGHT - 50 };
+	std::vector <int> salmonPosX{ 900 };
+	std::vector <int> salmonPosY{ SECOND_FLOOR_HEIGHT - 80 };
 
 	std::vector <int> legPosX{ 520 };
 	std::vector <int> legPosY{ THIRD_FLOOR_HEIGHT - 50 };
@@ -125,6 +134,8 @@ struct Flags
 	bool levelInfo{ true };
 	bool right{ true };
 	bool jumping{ false };
+	bool isAnimating{ false };
+	bool isClimbing{ false };
 };
 
 struct GameState
@@ -151,8 +162,8 @@ void DrawGameStats();
 void CreateGamePlay();
 void CreatePlatform();
 void LoopObject(GameObject& object);
+void UpdateDestroyed();
 
-void UpdatePlatform();
 void UpdatePlayer();
 void WalkingPlayerControls();
 void IdlePlayerControls();
@@ -163,7 +174,9 @@ void SetPlayerPos();
 void SetFloor();
 void Fall();
 void WalkingDurationControl(float time);
+void AnimationDurationControl(float time);
 void UpdateFleas();
+void UpdateTreats();
 void CatTreatsPlacement();
 
 float DotProduct(const Vector2D& v1, const Vector2D& v2);
@@ -191,10 +204,8 @@ void MainGameEntry( PLAY_IGNORE_COMMAND_LINE )
 bool MainGameUpdate( float elapsedTime )
 {
 	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
-	Point2D cameraPos = { objPlayer.pos.x - 600, 0 };
+	Point2D cameraPos = { objPlayer.pos.x - CAMERA_OFFSET_X, 0 };
 	Play::SetCameraPosition(cameraPos);
-
-	cameraPos = Play::GetCameraPosition();
 
 	switch (gameState.state)
 	{
@@ -202,6 +213,7 @@ bool MainGameUpdate( float elapsedTime )
 		{
 			UpdatePlayer();
 			UpdateFleas();
+			UpdateTreats();
 			break;
 		}
 		case STATE_PAUSE:
@@ -223,6 +235,8 @@ bool MainGameUpdate( float elapsedTime )
 	}
 
 	WalkingDurationControl(elapsedTime);
+	AnimationDurationControl(elapsedTime);
+	UpdateDestroyed();
 	Draw();
 
 	return Play::KeyDown( VK_ESCAPE );
@@ -299,7 +313,6 @@ void CreatePlatform()
 	}
 
 	j = 0;
-
 	for (int width : platform1.secondFloorWidth)
 	{
 		for (int i = 0; i < platform1.secondFloorWidth[j]; i++)
@@ -316,7 +329,6 @@ void CreatePlatform()
 	}
 
 	j = 0;
-
 	for (int width : platform1.thirdFloorWidth)
 	{
 		for (int i = 0; i < platform1.thirdFloorWidth[j]; i++)
@@ -333,7 +345,6 @@ void CreatePlatform()
 	}
 
 	j = 0;
-
 	for (int height : platform1.ladderHeight)
 	{
 		for (int i = 0; i < platform1.ladderHeight[j]; i++)
@@ -346,47 +357,6 @@ void CreatePlatform()
 			GameObject& ladder = Play::GetGameObject(id);
 			ladder.scale = 2.5f;
 		}
-	}
-}
-
-void DrawGameStats()
-{
-	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
-	GameObject& objFlea = Play::GetGameObjectByType(TYPE_FLEA);
-
-	Play::SetDrawingSpace(Play::SCREEN);
-	
-	Play::DrawFontText("64px", "floor: " + std::to_string(gameState.floor), { DISPLAY_WIDTH - 200, 50 }, Play::CENTRE);
-	Play::DrawFontText("64px", "cat vx: " + std::to_string(objPlayer.velocity.x), { DISPLAY_WIDTH - 150, 100 }, Play::CENTRE);
-	Play::DrawFontText("64px", "cat vy: " + std::to_string(objPlayer.velocity.y), { DISPLAY_WIDTH - 150, 150 }, Play::CENTRE);
-	Play::DrawFontText("64px", "Cat state: " + std::to_string(gameState.playerState), { DISPLAY_WIDTH - 400, 50 }, Play::CENTRE);
-	//Play::DrawFontText("64px", "CAMERA: " + std::to_string(cameraPos.y), { DISPLAY_WIDTH - 400, 100 }, Play::CENTRE);
-	//Play::DrawFontText("105px", (gameState.powerActivated) ? "SHIELD ACTIVATED" : "", { DISPLAY_WIDTH / 2 , 150 }, Play::CENTRE);
-	//Play::DrawFontText("132px", "Level: " + std::to_string(gameState.level), { DISPLAY_WIDTH / 2, 50 }, Play::CENTRE);
-	//Play::DrawFontText("132px", (gameState.levelInfo) ? "LEVEL " + std::to_string(gameState.level) : "", { DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2 }, Play::CENTRE);
-	//Play::DrawFontText("64px", "Collisions: " + std::to_string(gameState.asteroidCollisions), { 300, 100 }, Play::CENTRE);
-
-	Play::SetDrawingSpace(Play::WORLD);
-}
-
-void UpdatePlatform()
-{
-	std::vector<int> vPlatforms = Play::CollectGameObjectIDsByType(TYPE_PLATFORM);
-	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
-
-	for (int platformId : vPlatforms)
-	{
-		GameObject& platform = Play::GetGameObject(platformId);
-
-		if (IsPlayerColliding(platform) && jumpTimer > 0.5f)
-		{
-			gameState.playerState = STATE_GROUNDED;
-			objPlayer.pos = platform.pos;
-			jumpTimer = 0.f;
-		}
-		
-
-		Play::UpdateGameObject(platform);
 	}
 }
 
@@ -440,17 +410,48 @@ void UpdateFleas()
 	}
 }
 
+void UpdateTreats()
+{
+	std::vector <int> vTreats = Play::CollectGameObjectIDsByType(TYPE_TREAT);
+
+	for (int treatId : vTreats)
+	{
+		GameObject& treat = Play::GetGameObject(treatId);
+
+		if (IsPlayerColliding(treat))
+		{
+			gameState.score += 10;
+			Play::DestroyGameObject(treatId);
+		}
+		Play::UpdateGameObject(treat);
+	}
+}
+
 void WalkingDurationControl(float time)
 {
 	if (gameState.playerState == STATE_WALK)
 	{
-		if (walkTimer > 0.7f)
+		if (walkTimer > 0.7f && !Play::KeyDown(VK_LEFT) && !Play::KeyDown(VK_RIGHT))
 		{
 			gameState.playerState = STATE_GROUNDED;
 			walkTimer = 0.f;
 		}
 		else
 			walkTimer += time;
+	}
+}
+
+void AnimationDurationControl(float time)
+{
+	if (flags.isAnimating)
+	{
+		if (animationTimer > 0.7f)
+		{
+			flags.isAnimating = false;
+			animationTimer = 0.f;
+		}
+		else
+			animationTimer += time;
 	}
 }
 
@@ -461,34 +462,24 @@ void Jump()
 	if (IsPlayerCollidingLadder())
 		gameState.playerState = STATE_ATTACHED;
 
+	(jumpTimer < 1.0f) ? jumpTimer += DELTA_TIME : jumpTimer = 0.f;
+
+	(flags.right) ? 
+		Play::SetSprite(objPlayer, "cat_jump_right", 0.05f) : 
+		Play::SetSprite(objPlayer, "cat_jump_left", 0.05f);	
 	
-
-	if (flags.right)
-		Play::SetSprite(objPlayer, "cat_jump_right", 0.05f);                 
-	else
-		Play::SetSprite(objPlayer, "cat_jump_left", 0.05f);
-
-
-	if (jumpTimer < 1.0f)
-		jumpTimer += DELTA_TIME;
-
-	if (!flags.right)		
-		objPlayer.pos.x -= objPlayer.velocity.x * DELTA_TIME;
-	else
+	(!flags.right) ? 
+		objPlayer.pos.x -= objPlayer.velocity.x * DELTA_TIME : 
 		objPlayer.pos.x += objPlayer.velocity.x * DELTA_TIME;
 
-	if (objPlayer.velocity.y < 0 && !Play::KeyDown(VK_SPACE))
-		gravityMultiplyer = LOW_JUMP_MULTIPLIER;
-	else
+	(objPlayer.velocity.y < 0 && !Play::KeyDown(VK_SPACE) && jumpTimer < 0.5f) ? 
+		gravityMultiplyer = LOW_JUMP_MULTIPLIER : 
 		gravityMultiplyer = 1.f;
-
-	
-	if (objPlayer.velocity.y < 0)
-		objPlayer.velocity += GRAVITY * DELTA_TIME * gravityMultiplyer;
-	else
-		objPlayer.velocity += GRAVITY * FALL_MULTIPLIER * DELTA_TIME * gravityMultiplyer;	
-
-
+		
+	(objPlayer.velocity.y < 0) ? 
+		objPlayer.velocity += GRAVITY * DELTA_TIME * gravityMultiplyer : 
+		objPlayer.velocity += GRAVITY * FALL_MULTIPLIER * DELTA_TIME * gravityMultiplyer;
+		
 
 	std::vector <int> vPlatforms = Play::CollectGameObjectIDsByType(TYPE_PLATFORM);
 	for (int platformId : vPlatforms)
@@ -542,11 +533,9 @@ void WalkingPlayerControls()
 {
 	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
 	
-	if (flags.right)
-		Play::SetSprite(objPlayer, "cat_go_right", 0.5f);
-	else
+	(flags.right) ? 
+		Play::SetSprite(objPlayer, "cat_go_right", 0.5f) :
 		Play::SetSprite(objPlayer, "cat_go_left", 0.5f);
-
 
 	if (!IsPlayerCollidingAnyPlatform() && !IsPlayerStillCollidingLadder() && objPlayer.pos.y < PLAYER_START_POS.y)
 		gameState.playerState = STATE_FALL;
@@ -573,9 +562,8 @@ void IdlePlayerControls()
 	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
 	objPlayer.rotation = Play::DegToRad(0);
 
-	if (flags.right)
-		Play::SetSprite(objPlayer, "cat_sits_right", 0.1f);
-	else
+	(flags.right) ?
+		Play::SetSprite(objPlayer, "cat_sits_right", 0.1f) :
 		Play::SetSprite(objPlayer, "cat_sits_left", 0.1f);
 
 	if (Play::KeyDown(VK_RIGHT))
@@ -613,68 +601,67 @@ void AttachedPlayerControls()
 {
 	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
 	objPlayer.velocity = PLAYER_VELOCITY_DEFAULT;
-	
-	
 	objPlayer.animSpeed = 0.f;
 
 	if (!IsPlayerCollidingLadder() && !IsPlayerOnLadder())
 		gameState.playerState = STATE_FALL;
 
-	if (!IsPlayerCollidingLadder())
+	if (gameState.floor == 2 && objPlayer.pos.y <= platform1.ladderTopFloorSecond
+		|| gameState.floor == 3 && objPlayer.pos.y <= platform1.ladderTopFloorThird)
 	{
 		gameState.playerState = STATE_GROUNDED;
-		objPlayer.pos = { ladderPos.x, ladderPos.y - 55 };
+		ladderPos.y = platform1.ladderTopFloorSecond;
+		objPlayer.pos = { ladderPos.x, ladderPos.y - PLAYER_AABB_UPPER.y };
 	} 
 
 	if (flags.right)
 	{
 		objPlayer.rotation = Play::DegToRad(-90);
 		Play::SetSprite(objPlayer, "cat_walk_right", 0.f);
-		//objPlayer.pos.x = ladderPos.x - PLATFORM_AABB.x;
-	}
-	else
+	} 
+	else 
 	{
 		objPlayer.rotation = Play::DegToRad(90);
 		Play::SetSprite(objPlayer, "cat_walk_left", 0.f);
-		//objPlayer.pos.x = ladderPos.x + PLATFORM_AABB.x;
 	}
 
 	if (Play::KeyDown(VK_UP))
-	{
+	{	
 		objPlayer.pos.y -= 5;
 		objPlayer.animSpeed = 0.1f;
 	}
 	else if (Play::KeyDown(VK_DOWN))
 	{
-		objPlayer.pos.y += 5;	
+		if (IsPlayerCollidingAnyPlatform())
+		{
+			(flags.right) ?  objPlayer.pos.x -= 15 : objPlayer.pos.x += 15;
+			gameState.playerState = STATE_GROUNDED;
+		}
+		else
+			objPlayer.pos.y += 5;
+
 		objPlayer.animSpeed = 0.1f;
 	}
-	/*else if (Play::KeyDown(VK_LEFT) && flags.right)
+	else if (Play::KeyDown(VK_SPACE))
 	{
-		objPlayer.velocity = { -10, 10 };
+		objPlayer.pos.x += sin(objPlayer.rotation) * 25;	
+		objPlayer.pos.y -= cos(objPlayer.rotation) * 25;
+		objPlayer.rotation = 0;
 	}
-	else if (Play::KeyDown(VK_RIGHT) && !flags.right)
-	{
-		objPlayer.velocity = { 10, 10 };
-	}*/
 }
 
 void Fall()
 {
 	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
+	objPlayer.acceleration = GRAVITY_ACCELERATION;
 
-	if (!flags.right)
-		Play::SetSprite(objPlayer, "cat_look_left", 0.1f);
-	else
+	(!flags.right) ?
+		Play::SetSprite(objPlayer, "cat_look_left", 0.1f) :
 		Play::SetSprite(objPlayer, "cat_look_right", 0.1f);
 
-
-	if (!flags.right)
-		objPlayer.velocity += PLAYER_VELOCITY_FALL_LEFT * DELTA_TIME;
-	else
+	(!flags.right) ?
+		objPlayer.velocity += PLAYER_VELOCITY_FALL_LEFT * DELTA_TIME :
 		objPlayer.velocity += PLAYER_VELOCITY_FALL_RIGHT * DELTA_TIME;
-
-	objPlayer.acceleration = GRAVITY_ACCELERATION;
 
 	if (IsPlayerCollidingAnyPlatform())
 	{
@@ -875,6 +862,28 @@ void Draw()
 	Play::PresentDrawingBuffer();
 }
 
+void DrawGameStats()
+{
+	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
+	GameObject& objFlea = Play::GetGameObjectByType(TYPE_FLEA);
+
+	Play::SetDrawingSpace(Play::SCREEN);
+
+	Play::DrawFontText("64px", "Cat state: " + std::to_string(gameState.playerState), { DISPLAY_WIDTH - 150, 50 }, Play::CENTRE);
+	Play::DrawFontText("64px", "floor: " + std::to_string(gameState.floor), { DISPLAY_WIDTH - 150, 100 }, Play::CENTRE);
+	Play::DrawFontText("64px", "cat vy: " + std::to_string(objPlayer.velocity.y), { DISPLAY_WIDTH - 150, 150 }, Play::CENTRE);
+	Play::DrawFontText("64px", "cat vx: " + std::to_string(objPlayer.velocity.x), { DISPLAY_WIDTH - 150, 200 }, Play::CENTRE);
+
+	Play::DrawFontText("105px", "Score: " + std::to_string(gameState.score), { DISPLAY_WIDTH / 2 , 50 }, Play::CENTRE);
+
+	//Play::DrawFontText("64px", "top tile: " + std::to_string(platform1.ladderTopFloorSecond), { DISPLAY_WIDTH - 400, 100 }, Play::CENTRE);
+	//Play::DrawFontText("64px", "Cat py: " + std::to_string(objPlayer.pos.y), { DISPLAY_WIDTH / 2, 50 }, Play::CENTRE);
+	//Play::DrawFontText("132px", (gameState.levelInfo) ? "LEVEL " + std::to_string(gameState.level) : "", { DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2 }, Play::CENTRE);
+	//Play::DrawFontText("64px", "Collisions: " + std::to_string(gameState.asteroidCollisions), { 300, 100 }, Play::CENTRE);
+
+	Play::SetDrawingSpace(Play::WORLD);
+}
+
 void DrawLevelOne()
 {
 
@@ -915,6 +924,16 @@ void DrawLevelOne()
 	//Play::DrawRect(Point2D{ objPlayer.pos.x - PLAYER_AABB_BOTTOM.x, objPlayer.pos.y - PLAYER_AABB_BOTTOM.y }, Point2D{ objPlayer.pos.x + PLAYER_AABB_BOTTOM.x, objPlayer.pos.y + PLAYER_AABB_BOTTOM.y }, Play::cRed);
 	//Play::DrawRect(Point2D{ objPlayer.pos.x, objPlayer.pos.y - PLAYER_AABB_UPPER.y }, Point2D{ objPlayer.pos.x + PLAYER_AABB_UPPER.x, objPlayer.pos.y + PLAYER_AABB_UPPER.y }, Play::cWhite);
 	
+}
+
+void UpdateDestroyed()
+{
+	std::vector <int> vDestroyed = Play::CollectGameObjectIDsByType(TYPE_DESTROYED);
+
+	for (int destroyedId : vDestroyed)
+	{
+		Play::DestroyGameObject(destroyedId);
+	}
 }
 
 
