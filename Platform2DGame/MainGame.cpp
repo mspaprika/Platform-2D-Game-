@@ -2,9 +2,13 @@
 #define PLAY_USING_GAMEOBJECT_MANAGER
 #include "Play.h"  
 
+using namespace std;
+
 constexpr int DISPLAY_WIDTH = 1280;
 constexpr int DISPLAY_HEIGHT = 720;
 constexpr int DISPLAY_SCALE = 1;
+
+const float DELTA_TIME{ 0.016f };
 
 const int CAMERA_OFFSET_X{ 600 };
 const int TILE_SIZE{ 38 };
@@ -55,16 +59,14 @@ const Vector2D ACCELERATION{ 0, 0.5f };
 const Vector2D FRICTION{ 0.5f, 0.5f };
 
 Point2D cameraPos{ 0, 0 };
-
-const float DELTA_TIME{ 0.016f };
+Point2D platformPos{ 0, 0 };
+Point2D ladderPos{ 0, 0 };
 
 float walkTimer = 0.f;
 float jumpTimer = 0.f;
 float animationTimer = 0.f;
 float coyoteTimer = 0.f;
 float gravityMultiplyer = 1.f;
-Point2D platformPos{ 0, 0 };
-Point2D ladderPos{ 0, 0 };
 
 enum PlayerState
 {
@@ -102,6 +104,11 @@ enum GameFlow
 struct Platform
 {
 	const Vector2D WALL_OFFSET{ 20, 20 };
+	const Vector2D GROUND_FLOOR_POS{ LIMIT_LEFT, groundFloorHeight };
+
+	// position of the top tile top edge of the ladder
+	const int LADDER_TOP_FLOOR_SECOND{ PLAYER_POS_SECOND_FLOOR + TILE_SIZE };
+	const int LADDER_TOP_FLOOR_THIRD{ PLAYER_POS_THIRD_FLOOR + TILE_SIZE };
 
 	const int LIMIT_LEFT{ -30 };
 	const int LIMIT_RIGHT{ 60 };
@@ -112,60 +119,56 @@ struct Platform
 	int thirdFloorHeight{ 8 };
 	int fourthFloorHeight{ 3 };
 
-	int leftWallPosX{ LIMIT_LEFT };
-	int rightWallPosX{ LIMIT_RIGHT };
-	int wallHeight{ LIMIT_TOP };
+	const int GROUND_FLOOR_HEIGHT{ 18 };
+	const int SECOND_FLOOR_HEIGHT{ 13 };
+	const int THIRD_FLOOR_HEIGHT{ 8 };
+	const int FOURTH_FLOOR_HEIGHT{ 3 };
 
-	std::vector <int> groundFloorWidth{ LIMIT_RIGHT - LIMIT_LEFT };
-	const Vector2D GROUND_FLOOR_POS{ LIMIT_LEFT, groundFloorHeight };
+	const int LEFT_WALL_POS_X{ LIMIT_LEFT };
+	const int RIGHT_WALL_POS_X{ LIMIT_RIGHT };
+	const int WALL_HEIGHT{ LIMIT_TOP };
 
-	// horizontal grass platforms
-	std::vector <int> grassWidth{ 10, 10 }; 
-	std::vector <int> grassFloorPosX{ 5, 2 };
-	std::vector <int> grassFloorPosY{ fourthFloorHeight, secondFloorHeight };
+	vector <int> GROUND_FLOOR_WIDTH{  };
+	vector <int> GROUND_FLOOR_POS_X{  };
+	vector <int> GROUND_FLOOR_POS_Y{  };
 
-	std::vector <int> dirtPosX{ -1, 10 };
-	std::vector <int> dirtPosY{ groundFloorHeight - 10, groundFloorHeight - 15 };
-	std::vector <int> dirtHeight{ 10, 15 };
-	std::vector <int> dirtWidth{ 2, 5 };
+	vector <int> GRASS_WIDTH{  };
+	vector <int> GRASS_FLOOR_POS_X{  };
+	vector <int> GRASS_FLOOR_POS_Y{  };
 
-	// all the blue brick walls
-	std::vector <int> brickWallPosX{ -9, 20 };
-	std::vector <int> brickWallPosY{ 10, 10 };
-	std::vector <int> brickWallHeight{ 10, 10 };
-	std::vector <int> brickWallWidth{ 2, 1 };
+	vector <int> DIRT_POS_X{  };
+	vector <int> DIRT_POS_Y{  };
+	vector <int> DIRT_HEIGHT{  };
+	vector <int> DIRT_WIDTH{  };
 
-	std::vector <int> brickFloorWidth{ 10, 10 };
-	std::vector <int> brickFloorPosX{ -9, -9 };
-	std::vector <int> brickFloorPosY{ secondFloorHeight, thirdFloorHeight };
+	vector <int> BRICK_WALL_POS_X{  };
+	vector <int> BRICK_WALL_POS_Y{  };
+	vector <int> BRICK_WALL_HEIGHT{  };
+	vector <int> BRICK_WALL_WIDTH{  };
 
-	// all the sand brick walls
-	std::vector <int> sandWallPosX{ -5, 15 };
-	std::vector <int> sandWallPosY{ 10, 10 };
-	std::vector <int> sandWallHeight{ 10, 10 };
-	std::vector <int> sandWallWidth{ 2, 1 };
+	vector <int> BRICK_FLOOR_WIDTH{  };
+	vector <int> BRICK_FLOOR_POS_X{  };
+	vector <int> BRICK_FLOOR_POS_Y{  };
 
-	std::vector <int> sandFloorWidth{ 10, 10 };
-	std::vector <int> sandFloorPosX{ 10, 10 };
-	std::vector <int> sandFloorPosY{ secondFloorHeight, thirdFloorHeight };
+	vector <int> SAND_WALL_POS_X{  };
+	vector <int> SAND_WALL_POS_Y{  };
+	vector <int> SAND_WALL_HEIGHT{  };
+	vector <int> SAND_WALL_WIDTH{  };
 
-	// climbing ladders
-	std::vector <int> ladderPosX{ -10 }; // 8
-	std::vector <int> ladderPosY{ groundFloorHeight }; // GROUND_FLOOR_HEIGHT - TILE_SIZE
-	std::vector <int> ladderHeight{ 5 }; // 4
+	vector <int> SAND_FLOOR_WIDTH{  };
+	vector <int> SAND_FLOOR_POS_X{  };
+	vector <int> SAND_FLOOR_POS_Y{  };
 
-	// position of the top tile top edge of the ladder
-	int ladderTopFloorSecond{ PLAYER_POS_SECOND_FLOOR + TILE_SIZE };
-	int ladderTopFloorThird{ PLAYER_POS_THIRD_FLOOR + TILE_SIZE };
-};
+	vector <int> LADDER_POS_X{ }; 
+	vector <int> LADDER_POS_Y{  }; 
+	vector <int> LADDER_HEIGHT{  }; 
+	vector <int> LADDER_WIDTH{  };
 
-struct CatTreats
-{
-	std::vector <int> salmonPosX{ 900 };
-	std::vector <int> salmonPosY{ SECOND_FLOOR_HEIGHT - 80 };
+	vector <int> SALMON_POS_X{  };
+	vector <int> SALMON_POS_Y{  };
 
-	std::vector <int> legPosX{ 520 };
-	std::vector <int> legPosY{ THIRD_FLOOR_HEIGHT - 50 };
+	vector <int> CHICKEN_POS_X{  };
+	vector <int> CHICKEN_POS_Y{  };
 };
 
 struct Flags
@@ -196,34 +199,43 @@ struct GameState
 
 Flags flags;
 GameState gameState;
+
 Platform platform1;
-CatTreats catTreats;
+Platform platform2;
+
+void CameraControl();
+void WalkingDurationControl(float time);
+void AnimationDurationControl(float time);
+void CoyoteControl();
+void SetFloor();
+void SetPlayerPos();
 
 void Draw();
-void DrawLevelOne();
+void DrawLevel();
 void DrawGameStats();
+
+void CoordsPlatform1();
 
 void CreateGamePlay();
 void CreatePlatform(Platform& platform);
-void LoopObject(GameObject& object);
-void UpdateDestroyed();
+void BuildSideWalls(Platform& platform);
+void CreateWalls(vector <int>& w, vector <int>& h, vector <int>& x, vector <int>& y, const char* s);
+void CreateFloors(vector <int>& w, vector <int>& x, vector <int>& y, const char* s);
+void CatTreatsPlacement(Platform& platform);
 
-void UpdatePlayer();
+void Jump();
+void Fall();
 void WalkingPlayerControls();
 void IdlePlayerControls();
 void AttachedPlayerControls();
-void Jump();
 void JumpControls();
-void CoyoteControl();
-void SetPlayerPos();
-void SetFloor();
-void Fall();
-void WalkingDurationControl(float time);
-void AnimationDurationControl(float time);
+
+void UpdatePlayer();
 void UpdateFleas();
 void UpdateTreats();
-void CatTreatsPlacement();
-void CameraControl();
+
+void UpdateDestroyed();
+void LoopObject(GameObject& object);
 
 float DotProduct(const Vector2D& v1, const Vector2D& v2);
 void Normalise(Vector2D& v);
@@ -327,8 +339,24 @@ void CameraControl()
 
 void CreateGamePlay()
 {
-	CreatePlatform(platform1);
-	CatTreatsPlacement();
+	switch (gameState.level)
+	{
+		case 1:
+		{
+			CoordsPlatform1();
+			CreatePlatform(platform1);
+			CatTreatsPlacement(platform1);
+			break;
+		}
+		default:
+		{
+			CoordsPlatform1();
+			CreatePlatform(platform1);
+			CatTreatsPlacement(platform1);
+			break;
+		}
+	}
+
 	Play::MoveSpriteOrigin("cat_go_right", 0, -3);
 	Play::MoveSpriteOrigin("cat_go_left", 0, -3);
 
@@ -344,25 +372,24 @@ void CreateGamePlay()
 	objFlea.animSpeed = .05f;
 }
 
-void CatTreatsPlacement()
+void CatTreatsPlacement(Platform& platform)
 {
-
-	for (int i = 0; i < catTreats.salmonPosX.size(); i++)
+	for (int i = 0; i < platform.SALMON_POS_X.size(); i++)
 	{
 		int id = Play::CreateGameObject(
 			TYPE_TREAT,
-			Point2D{ catTreats.salmonPosX[i], catTreats.salmonPosY[i] },
+			Point2D{ platform.SALMON_POS_X[i] * TILE_SIZE, platform.SALMON_POS_Y[i] * TILE_SIZE },
 			10,
 			"salmon");
 		GameObject& salmon = Play::GetGameObject(id);
 		salmon.scale = 2.5f;
 	}
 
-	for (int i = 0; i < catTreats.legPosX.size(); i++)
+	for (int i = 0; i < platform.CHICKEN_POS_X.size(); i++)
 	{
 		int id = Play::CreateGameObject(
 			TYPE_TREAT,
-			Point2D{ catTreats.legPosX[i], catTreats.legPosY[i] },
+			Point2D{ platform.CHICKEN_POS_X[i] * TILE_SIZE, platform.CHICKEN_POS_Y[i] * TILE_SIZE },
 			10,
 			"leg");
 		GameObject& leg = Play::GetGameObject(id);
@@ -370,176 +397,120 @@ void CatTreatsPlacement()
 	}	
 }
 
+void CoordsPlatform1()
+{
+	// horizontal platforms / floors
+	platform1.GROUND_FLOOR_WIDTH.insert(platform1.GROUND_FLOOR_WIDTH.begin(), { platform1.LIMIT_RIGHT - platform1.LIMIT_LEFT });
+	platform1.GROUND_FLOOR_POS_X.insert(platform1.GROUND_FLOOR_POS_X.begin(), { platform1.LIMIT_LEFT });
+	platform1.GROUND_FLOOR_POS_Y.insert(platform1.GROUND_FLOOR_POS_Y.begin(), { platform1.GROUND_FLOOR_HEIGHT });
+
+	platform1.BRICK_FLOOR_WIDTH.insert(platform1.BRICK_FLOOR_WIDTH.begin(), { 10, 10 });
+	platform1.BRICK_FLOOR_POS_X.insert(platform1.BRICK_FLOOR_POS_X.begin(), { -9, -9 });
+	platform1.BRICK_FLOOR_POS_Y.insert(platform1.BRICK_FLOOR_POS_Y.begin(), { platform1.SECOND_FLOOR_HEIGHT, platform1.THIRD_FLOOR_HEIGHT });
+
+	platform1.SAND_FLOOR_WIDTH.insert(platform1.SAND_FLOOR_WIDTH.begin(), { 10, 10 });
+	platform1.SAND_FLOOR_POS_X.insert(platform1.SAND_FLOOR_POS_X.begin(), { 10, 10 });
+	platform1.SAND_FLOOR_POS_Y.insert(platform1.SAND_FLOOR_POS_Y.begin(), { platform1.SECOND_FLOOR_HEIGHT, platform1.THIRD_FLOOR_HEIGHT });
+
+	platform1.GRASS_WIDTH.insert(platform1.GRASS_WIDTH.begin(), { 10, 10 });
+	platform1.GRASS_FLOOR_POS_X.insert(platform1.GRASS_FLOOR_POS_X.begin(), { 5, 2 });
+	platform1.GRASS_FLOOR_POS_Y.insert(platform1.GRASS_FLOOR_POS_Y.begin(), { platform1.FOURTH_FLOOR_HEIGHT, platform1.SECOND_FLOOR_HEIGHT });
+
+	// vertical platforms / walls
+	platform1.BRICK_WALL_HEIGHT.insert(platform1.BRICK_WALL_HEIGHT.begin(), { 2, 12 });
+	platform1.BRICK_WALL_WIDTH.insert(platform1.BRICK_WALL_WIDTH.begin(), { 2, 1 });
+	platform1.BRICK_WALL_POS_X.insert(platform1.BRICK_WALL_POS_X.begin(), { -9, 20 });
+	platform1.BRICK_WALL_POS_Y.insert(platform1.BRICK_WALL_POS_Y.begin(), { 10, 10 });
+
+	platform1.SAND_WALL_HEIGHT.insert(platform1.SAND_WALL_HEIGHT.begin(), { 10, 10 });
+	platform1.SAND_WALL_WIDTH.insert(platform1.SAND_WALL_WIDTH.begin(), { 2, 1 });
+	platform1.SAND_WALL_POS_X.insert(platform1.SAND_WALL_POS_X.begin(), { -5, 15 });
+	platform1.SAND_WALL_POS_Y.insert(platform1.SAND_WALL_POS_Y.begin(), { 10, 10 });
+
+	platform1.DIRT_HEIGHT.insert(platform1.DIRT_HEIGHT.begin(), { 10, 15 });
+	platform1.DIRT_WIDTH.insert(platform1.DIRT_WIDTH.begin(), { 2, 5 });
+	platform1.DIRT_POS_X.insert(platform1.DIRT_POS_X.begin(), { -1, 10 });
+	platform1.DIRT_POS_Y.insert(platform1.DIRT_POS_Y.begin(), { platform1.GROUND_FLOOR_HEIGHT - 10, platform1.GROUND_FLOOR_HEIGHT - 15 });
+
+	platform1.LADDER_HEIGHT.insert(platform1.LADDER_HEIGHT.begin(), { 5 });
+	platform1.LADDER_WIDTH.insert(platform1.LADDER_WIDTH.begin(), { 1 });
+	platform1.LADDER_POS_X.insert(platform1.LADDER_POS_X.begin(), { -10 });
+	platform1.LADDER_POS_Y.insert(platform1.LADDER_POS_Y.begin(), { platform1.GROUND_FLOOR_HEIGHT - 3 });
+
+	// cat treats
+	platform1.SALMON_POS_X.insert(platform1.SALMON_POS_X.begin(), { 9 });
+	platform1.SALMON_POS_Y.insert(platform1.SALMON_POS_Y.begin(), { platform1.SECOND_FLOOR_HEIGHT - 1 });
+
+	platform1.CHICKEN_POS_X.insert(platform1.CHICKEN_POS_X.begin(), { 5 });
+	platform1.CHICKEN_POS_Y.insert(platform1.CHICKEN_POS_Y.begin(), { platform1.THIRD_FLOOR_HEIGHT - 1 });
+}
+
 void CreatePlatform(Platform& platform)
+{
+	BuildSideWalls(platform);
+
+	CreateFloors(platform.GROUND_FLOOR_WIDTH, platform.GROUND_FLOOR_POS_X, platform.GROUND_FLOOR_POS_Y, "the_ground");
+	CreateFloors(platform.GRASS_WIDTH, platform.GRASS_FLOOR_POS_X, platform.GRASS_FLOOR_POS_Y, "grass_like_ground");
+	CreateFloors(platform.BRICK_FLOOR_WIDTH, platform.BRICK_FLOOR_POS_X, platform.BRICK_FLOOR_POS_Y, "blue_brick");
+	CreateFloors(platform.SAND_FLOOR_WIDTH, platform.SAND_FLOOR_POS_X, platform.SAND_FLOOR_POS_Y, "sand_brick");
+
+	CreateWalls(platform.SAND_WALL_WIDTH, platform.SAND_WALL_HEIGHT, platform.SAND_WALL_POS_X, platform.SAND_WALL_POS_Y, "sand_brick");
+	CreateWalls(platform.BRICK_WALL_WIDTH, platform.BRICK_WALL_HEIGHT, platform.BRICK_WALL_POS_X, platform.BRICK_WALL_POS_Y, "blue_brick");
+	CreateWalls(platform.DIRT_WIDTH, platform.DIRT_HEIGHT, platform.DIRT_POS_X, platform.DIRT_POS_Y, "dirrt");
+	CreateWalls(platform.LADDER_WIDTH, platform.LADDER_HEIGHT, platform.LADDER_POS_X, platform.LADDER_POS_Y, "climb_grass");
+}
+
+void CreateWalls(vector <int>& w, vector <int>& h, vector <int>& x, vector <int>& y, const char* s)
 {
 	int j = 0;
 
-	for (int width : platform.groundFloorWidth)
+	for (int height : h)
 	{
-		for (int i = 0; i < platform.groundFloorWidth[j]; i++)
+		for (int width : w)
 		{
-			int id = Play::CreateGameObject(
-				TYPE_PLATFORM,
-				Point2D{ (platform.GROUND_FLOOR_POS.x * TILE_SIZE) + (TILE_SIZE * i), platform.groundFloorHeight * TILE_SIZE + 20},
-				10,
-				"the_ground");
-			GameObject& objPlatform = Play::GetGameObject(id);
-			objPlatform.scale = 1.8f;
-		}
-		j++;
-	}
-	j = 0;
-
-	for (int width : platform.brickFloorWidth)
-	{
-		for (int i = 0; i < platform.brickFloorWidth[j]; i++)
-		{
-			int id = Play::CreateGameObject(
-				TYPE_PLATFORM,
-				Point2D{ (platform.brickFloorPosX[j] * TILE_SIZE) + (TILE_SIZE * i), platform.brickFloorPosY[j] * TILE_SIZE },
-				10,
-				"blue_brick");
-			GameObject& objPlatform = Play::GetGameObject(id);
-			objPlatform.scale = 2.5f;
-		}
-		j++;
-	}
-
-	j = 0;
-
-	for (int width : platform.sandFloorWidth)
-	{
-		for (int i = 0; i < platform.sandFloorWidth[j]; i++)
-		{
-			int id = Play::CreateGameObject(
-				TYPE_PLATFORM,
-				Point2D{ (platform.sandFloorPosX[j] * TILE_SIZE) + (TILE_SIZE * i), platform.sandFloorPosY[j] * TILE_SIZE },
-				10,
-				"sand_brick");
-			GameObject& objPlatform = Play::GetGameObject(id);
-			objPlatform.scale = 2.5f;
-		}
-		j++;
-	}
-
-	j = 0;
-
-	for (int height : platform.brickWallHeight)
-	{
-		for (int width : platform.brickWallWidth)
-		{
-			for (int i = 0; i < platform.brickWallHeight[j]; i++)
+			for (int i = 0; i < h[j]; i++)
 			{
-				for (int k = 0; k < platform.brickWallWidth[j]; k++)
+				for (int k = 0; k < w[j]; k++)
 				{
-					int id = Play::CreateGameObject(
-						TYPE_PLATFORM,
-						Point2D{ platform.brickWallPosX[j] * TILE_SIZE + (TILE_SIZE * k) , platform.brickWallPosY[j] * TILE_SIZE + (TILE_SIZE * i) },
-						10,
-						"blue_brick");
-					GameObject& objWall = Play::GetGameObject(id);
-					objWall.scale = 2.5f;
+					int id = Play::CreateGameObject( TYPE_PLATFORM,
+						Point2D{ x[j] * TILE_SIZE + (TILE_SIZE * k) , y[j] * TILE_SIZE + (TILE_SIZE * i) }, 10, s );
+					Play::GetGameObject(id).scale = 2.5f;
 				}
 			}
 		}
 		j++;
 	}
+}
 
-	j = 0;
+void CreateFloors(vector <int>& w, vector <int>& x, vector <int>& y, const char* s)
+{
+	int j = 0;
 
-	for (int height : platform.sandWallHeight)
+	for (int width : w)
 	{
-		for (int width : platform.sandWallWidth)
+		for (int i = 0; i < w[j]; i++)
 		{
-			for (int i = 0; i < platform.sandWallHeight[j]; i++)
-			{
-				for (int k = 0; k < platform.sandWallWidth[j]; k++)
-				{
-					int id = Play::CreateGameObject(
-						TYPE_PLATFORM,
-						Point2D{ platform.sandWallPosX[j] * TILE_SIZE + (TILE_SIZE * k) , platform.sandWallPosY[j] * TILE_SIZE + (TILE_SIZE * i) },
-						10,
-						"sand_brick");
-					GameObject& objWall = Play::GetGameObject(id);
-					objWall.scale = 2.5f;
-				}
-			}
+			int id = Play::CreateGameObject( TYPE_PLATFORM,
+				Point2D{ ( x[j] * TILE_SIZE) + (TILE_SIZE * i), y[j] * TILE_SIZE + 20 }, 10, s );
+			Play::GetGameObject(id).scale = 2.5f;
 		}
 		j++;
 	}
+}
 
-	j = 0;
-
-	for (int height : platform.dirtHeight)
+void BuildSideWalls(Platform& platform)
+{
+	for (int i = 0; i < platform.WALL_HEIGHT; i++)
 	{
-		for (int width : platform.dirtWidth)
-		{
-			for (int i = 0; i < platform.dirtHeight[j]; i++)
-			{
-				for (int k = 0; k < platform.dirtWidth[j]; k++)
-				{
-					int id = Play::CreateGameObject(
-						TYPE_PLATFORM,
-						Point2D{ platform.dirtPosX[j] * TILE_SIZE + (TILE_SIZE * k) , platform.dirtPosY[j] * TILE_SIZE + (TILE_SIZE * i) },
-						10,
-						"dirrt");
-					GameObject& objDirt = Play::GetGameObject(id);
-					objDirt.scale = 2.5f;
-				}
-			}
-		}
-		j++;
-	}
+		int id = Play::CreateGameObject( TYPE_WALL,
+			Point2D{ (platform.LEFT_WALL_POS_X * TILE_SIZE) + platform.WALL_OFFSET.x, (TILE_SIZE * i) },
+			10, "left_side_wall");
+		Play::GetGameObject(id).scale = 2.5f;
 
-	j = 0;
-	for (int width : platform.grassWidth)
-	{
-		for (int i = 0; i < platform.grassWidth[j]; i++)
-		{
-
-			int id = Play::CreateGameObject(
-				TYPE_PLATFORM,
-				Point2D{ (platform.grassFloorPosX[j] * TILE_SIZE) + (TILE_SIZE * i), platform.grassFloorPosY[j] * TILE_SIZE},
-				10,
-				"grass_like_ground");
-			GameObject& objPlatform = Play::GetGameObject(id);
-			objPlatform.scale = 2.5f;
-		}
-		j++;
-	}
-
-	j = 0;
-	for (int height : platform.ladderHeight)
-	{
-		for (int i = 0; i < platform.ladderHeight[j]; i++)
-		{
-			int id = Play::CreateGameObject(
-				TYPE_LADDER,
-				Point2D{ (platform.ladderPosX[j] * TILE_SIZE), platform.ladderPosY[j] * TILE_SIZE - (TILE_SIZE * i)},
-				10,
-				"climb_grass");
-			GameObject& objLadder = Play::GetGameObject(id);
-			objLadder.scale = 2.5f;
-		}
-	}
-
-	for (int i = 0; i < platform.wallHeight; i++)
-	{
-		int id = Play::CreateGameObject(
-			TYPE_WALL,
-			Point2D{ (platform.leftWallPosX * TILE_SIZE) + platform.WALL_OFFSET.x, (TILE_SIZE * i)},
-			10,
-			"left_side_wall");
-		GameObject& objLeftWall = Play::GetGameObject(id);
-		objLeftWall.scale = 2.5f;
-
-		int id2 = Play::CreateGameObject(
-			TYPE_WALL,
-			Point2D{ (platform.rightWallPosX * TILE_SIZE) - platform.WALL_OFFSET.x * 3 , (TILE_SIZE * i) - platform.WALL_OFFSET.y },                                                
-			10,
-			"right_side_wall");
-		GameObject& objRightWall = Play::GetGameObject(id2);
-		objRightWall.scale = 2.5f;
+		int id2 = Play::CreateGameObject( TYPE_WALL,
+			Point2D{ (platform.RIGHT_WALL_POS_X * TILE_SIZE) - platform.WALL_OFFSET.x * 3 , (TILE_SIZE * i) - platform.WALL_OFFSET.y },
+			10, "right_side_wall");
+		Play::GetGameObject(id2).scale = 2.5f;
 	}
 }
 
@@ -547,7 +518,6 @@ void UpdatePlayer()
 {
 	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
 	SetFloor();
-	//LoopObject(objPlayer);
 
 	switch (gameState.playerState)
 	{           
@@ -582,7 +552,7 @@ void UpdatePlayer()
 
 void UpdateFleas()
 {
-	std::vector <int> vFleas = Play::CollectGameObjectIDsByType(TYPE_FLEA);
+	vector <int> vFleas = Play::CollectGameObjectIDsByType(TYPE_FLEA);
 
 	for (int fleaId : vFleas)
 	{
@@ -595,7 +565,7 @@ void UpdateFleas()
 
 void UpdateTreats()
 {
-	std::vector <int> vTreats = Play::CollectGameObjectIDsByType(TYPE_TREAT);
+	vector <int> vTreats = Play::CollectGameObjectIDsByType(TYPE_TREAT);
 
 	for (int treatId : vTreats)
 	{
@@ -709,13 +679,13 @@ void SetFloor()
 {
 	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
 
-	if (objPlayer.oldPos.y <= platform1.fourthFloorHeight * TILE_SIZE)
+	if (objPlayer.oldPos.y <= platform1.FOURTH_FLOOR_HEIGHT * TILE_SIZE)
 		gameState.floor = 4;
-	else if (objPlayer.oldPos.y <= platform1.thirdFloorHeight * TILE_SIZE)
+	else if (objPlayer.oldPos.y <= platform1.THIRD_FLOOR_HEIGHT * TILE_SIZE)
 		gameState.floor = 3;
-	else if (objPlayer.oldPos.y <= platform1.secondFloorHeight * TILE_SIZE)
+	else if (objPlayer.oldPos.y <= platform1.SECOND_FLOOR_HEIGHT * TILE_SIZE)
 		gameState.floor = 2;
-	else if (objPlayer.oldPos.y <= platform1.groundFloorHeight * TILE_SIZE)
+	else if (objPlayer.oldPos.y <= platform1.GROUND_FLOOR_HEIGHT * TILE_SIZE)
 		gameState.floor = 1;
 }
 
@@ -815,12 +785,17 @@ void AttachedPlayerControls()
 	if (!IsPlayerCollidingLadder() && !IsPlayerOnLadder())
 		gameState.playerState = STATE_FALL;
 
-	if (gameState.floor == 2 && objPlayer.pos.y <= platform1.ladderTopFloorSecond
-		|| gameState.floor == 3 && objPlayer.pos.y <= platform1.ladderTopFloorThird)
+	if (gameState.floor == 2 && objPlayer.pos.y <= platform1.LADDER_TOP_FLOOR_SECOND
+		|| gameState.floor == 3 && objPlayer.pos.y <= platform1.LADDER_TOP_FLOOR_THIRD)
 	{
 		SetPlayerPos();
 		gameState.playerState = STATE_GROUNDED;
-		ladderPos.y = platform1.ladderTopFloorSecond;
+
+		if (gameState.floor == 2)
+			ladderPos.y = platform1.LADDER_TOP_FLOOR_SECOND;
+		else if (gameState.floor == 3)
+			ladderPos.y = platform1.LADDER_TOP_FLOOR_THIRD;
+
 		objPlayer.pos.x = ladderPos.x;
 	} 
 
@@ -892,7 +867,7 @@ void Fall()
 
 bool IsPlayerOnLadder()
 {
-	std::vector <int> vLadders = Play::CollectGameObjectIDsByType(TYPE_LADDER);
+	vector <int> vLadders = Play::CollectGameObjectIDsByType(TYPE_LADDER);
 
 	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
 
@@ -922,7 +897,7 @@ bool IsPlayerOnLadder()
 
 bool IsPlayerCollidingLadder()
 {
-	std::vector <int> vLadders = Play::CollectGameObjectIDsByType(TYPE_LADDER);
+	vector <int> vLadders = Play::CollectGameObjectIDsByType(TYPE_LADDER);
 
 	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
 
@@ -940,7 +915,7 @@ bool IsPlayerCollidingLadder()
 
 bool IsPlayerStillCollidingLadder() 
 {
-	std::vector <int> vLadders = Play::CollectGameObjectIDsByType(TYPE_LADDER);
+	vector <int> vLadders = Play::CollectGameObjectIDsByType(TYPE_LADDER);
 
 	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
 
@@ -958,7 +933,7 @@ bool IsPlayerStillCollidingLadder()
 
 bool IsPlayerCollidingAnyPlatform()
 {
-	std::vector <int> vPlatforms = Play::CollectGameObjectIDsByType(TYPE_PLATFORM);
+	vector <int> vPlatforms = Play::CollectGameObjectIDsByType(TYPE_PLATFORM);
 	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
 
 	for (int platformId : vPlatforms)
@@ -974,7 +949,7 @@ bool IsPlayerCollidingAnyPlatform()
 
 bool IsPlayerCollidingAnyPlatformBoth()
 {
-	std::vector <int> vPlatforms = Play::CollectGameObjectIDsByType(TYPE_PLATFORM);
+	vector <int> vPlatforms = Play::CollectGameObjectIDsByType(TYPE_PLATFORM);
 	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
 
 	for (int platformId : vPlatforms)
@@ -1091,10 +1066,7 @@ void Draw()
 	Play::ClearDrawingBuffer(Play::cWhite);
 	Play::DrawBackground();
 
-	if (gameState.level == 1)
-		DrawLevelOne();
-
-
+	DrawLevel();
 	DrawGameStats();
 
 	Play::PresentDrawingBuffer();
@@ -1122,10 +1094,9 @@ void DrawGameStats()
 	Play::SetDrawingSpace(Play::WORLD);
 }
 
-void DrawLevelOne()
+void DrawLevel()
 {
-
-	std::vector <int> vLadders = Play::CollectGameObjectIDsByType(TYPE_LADDER);
+	vector <int> vLadders = Play::CollectGameObjectIDsByType(TYPE_LADDER);
 	for (int ladderId : vLadders)
 	{
 		GameObject& ladder = Play::GetGameObject(ladderId);
@@ -1133,7 +1104,7 @@ void DrawLevelOne()
 		Play::DrawRect(Point2D{ ladder.pos.x - PLATFORM_AABB.x, ladder.pos.y - PLATFORM_AABB.y }, Point2D{ ladder.pos.x + PLATFORM_AABB.x, ladder.pos.y + PLATFORM_AABB.y }, Play::cWhite);
 	}
 
-	std::vector <int> vWalls = Play::CollectGameObjectIDsByType(TYPE_WALL);
+	vector <int> vWalls = Play::CollectGameObjectIDsByType(TYPE_WALL);
 
 	for (int wallId : vWalls)
 	{
@@ -1142,7 +1113,7 @@ void DrawLevelOne()
 		//Play::DrawRect(Point2D{ wall.pos.x - PLATFORM_AABB.x, wall.pos.y - PLATFORM_AABB.y }, Point2D{ wall.pos.x + PLATFORM_AABB.x, wall.pos.y + PLATFORM_AABB.y }, Play::cWhite);
 	}
 
-	std::vector<int> vPlatforms = Play::CollectGameObjectIDsByType(TYPE_PLATFORM);
+	vector<int> vPlatforms = Play::CollectGameObjectIDsByType(TYPE_PLATFORM);
 	for (int platformId : vPlatforms)
 	{
 		GameObject& platform = Play::GetGameObject(platformId);
@@ -1150,7 +1121,7 @@ void DrawLevelOne()
 		Play::DrawObjectRotated(platform);
 	}
 
-	std::vector <int> vTreats = Play::CollectGameObjectIDsByType(TYPE_TREAT);
+	vector <int> vTreats = Play::CollectGameObjectIDsByType(TYPE_TREAT);
 	for (int treatId : vTreats)
 	{
 		GameObject& treat = Play::GetGameObject(treatId);
@@ -1160,7 +1131,7 @@ void DrawLevelOne()
 
 	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
 
-	std::vector <int> vFleas = Play::CollectGameObjectIDsByType(TYPE_FLEA);
+	vector <int> vFleas = Play::CollectGameObjectIDsByType(TYPE_FLEA);
 
 	for (int fleaId : vFleas)
 	{
@@ -1176,7 +1147,7 @@ void DrawLevelOne()
 
 void UpdateDestroyed()
 {
-	std::vector <int> vDestroyed = Play::CollectGameObjectIDsByType(TYPE_DESTROYED);
+	vector <int> vDestroyed = Play::CollectGameObjectIDsByType(TYPE_DESTROYED);
 
 	for (int destroyedId : vDestroyed)
 	{
