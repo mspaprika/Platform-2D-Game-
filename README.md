@@ -2,10 +2,12 @@
 * **PLATFORM**: Windows
 * **LANGUAGE**: C++
 * **ENVIRONMENT**: Visual Studio
+* 
 <br>
 <br>
   
 My first Platformer game, currently in progress. 
+
 <br>
 <br>
 
@@ -17,7 +19,12 @@ My first Platformer game, currently in progress.
 
 💦 Water might be deadly.
 
+<br>
+<br>
 
 **More Info soon...**
+
+<br>
+<br>
 
 <img src=".github/kitty_short2.gif" width="500">
