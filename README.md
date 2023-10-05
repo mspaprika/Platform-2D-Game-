@@ -18,4 +18,4 @@ My first Platformer game, currently in progress.
 **More Info soon...**
 <br>
 <br>
-<img src=".github/kitty_short2.gif" width="500">
+<img src=".github/kitty_short2.gif" width="700">
