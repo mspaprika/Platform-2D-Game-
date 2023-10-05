@@ -7,4 +7,4 @@
 My first Platformer game, currently in progress. 
 More info soon......
 
-<img src=".github/kitty_short.gif" width="500">
+<img src=".github/kitty_jumps.gif" width="500">
