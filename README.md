@@ -5,13 +5,14 @@
   
 My first Platformer game, currently in progress. 
 
+
 🐈 The main character is a cat and she likes to jump. 
 
 🦟 Fleas are not friends. They sneak around and jump when you least expect it.
 
 ⛔ Cat doesn't like fleas.
 
-💦 Water might be deadly...
+💦 Water might be deadly.
 
 
 **More Info soon...**
