@@ -20,11 +20,13 @@ const int BOX_OFFSET_Y{ 20 }; // pixels
 const int WALL_OFFSET{ 20 }; // pixels
 const int FLOOR_OFFSET{ 18 }; // pixels
 const int LADDER_OFFSET_Y{ 30 }; // pixels
-const int LADDER_OFFSET_X{ 10 }; // pixels
+const int LADDER_OFFSET_X_STICK{ 16 }; // pixels
+const int LADDER_OFFSET_X_SLIDE{ 17 }; // pixels
 const int TILE_SIZE{ 38 }; // pixels
-const int POO_OFFSET_Y{ 35 }; // pixels
+const int POO_OFFSET_Y{ 30 }; // pixels
 const int WATER_OFFSET_Y{ 10 }; // pixels
-
+const int TREE_OFFSET_Y{ 10 }; // pixels
+const int BUSH_OFFSET_Y{ 10 }; // pixels
 // other measurments are in tiles
 // width and height in tiles, rounded to the bigger side so all screen is covered
 const int TILE_HEIGHT{ 19 };
@@ -95,6 +97,22 @@ Point2D ladderPos{ 0, 0 };
 
 int groundedPosY = 0;
 
+struct Timers
+{
+	float walkTimer{ 0.f };
+	float jumpTimer{ 0.f };
+	float animationTimer{ 0.f };
+	float coyoteTimer{ 0.f };
+	float fleaTimer{ 0.f };
+	float furballTimer{ 0.f };
+	float hissTimer{ 0.f };
+	float poopTimer{ 0.f };
+	float idleTimer{ 0.f };
+	float lookAroundTimer{ 0.f };
+	float lickTimer{ 0.f };
+	float hairballTimer{ 0.f };
+};
+
 float furballTimer = 0.f;
 float hissTimer = 0.f;
 float fleaTimer = 0.f;
@@ -104,6 +122,8 @@ float poopTimer = 0.f;
 float animationTimer = 0.f;
 float coyoteTimer = 0.f;
 float gravityMultiplyer = 1.f;
+
+int ladderOffsetX = LADDER_OFFSET_X_STICK;
 
 enum PlayerState
 {
@@ -132,7 +152,8 @@ enum GameObjectType
 	TYPE_TREAT,
 	TYPE_FLOWER,
 	TYPE_POO,
-	TYPE_SPECIAL,
+	TYPE_TREE,
+	TYPE_BUSH,
 	TYPE_BOX,
 	TYPE_WALL,
 	TYPE_DESTROYED,
@@ -220,6 +241,12 @@ struct Platform
 	Point2D waterPos{  };
 	int waterLength{  };
 
+	vector <int> TREE_POS_X{  };
+	vector <int> TREE_POS_Y{  };
+
+	vector <int> BUSH_POS_X{  };
+	vector <int> BUSH_POS_Y{  };
+
 	vector <int> SALMON_POS_X{  };
 	vector <int> SALMON_POS_Y{  };
 
@@ -250,6 +277,7 @@ struct Flags
 	bool isGrounded{ false };
 	bool newDirection{ true };
 	bool flyActive{ false };
+	bool AnimationChanged{ false };
 
 	bool fleaActivated{ false };
 };
@@ -270,6 +298,7 @@ struct GameState
 };
 
 Flags flags;
+Timers t;
 GameState gameState;
 
 Platform platform1;
@@ -298,7 +327,7 @@ void BuildSideWalls(Platform& platform);
 void CreateWalls(vector <int>& w, vector <int>& h, vector <int>& x, vector <int>& y, float scale, const char* s, int TYPE);
 void CreateFloors(vector <int>& w, vector <int>& x, vector <int>& y, float scale, const char* s, int TYPE);
 void ItemsPlacement(Platform& platform);
-void PlaceWater(Platform& platform);
+void PlaceWaterAndPlants(Platform& platform);
 
 void Jump();
 void Fall();
@@ -318,6 +347,10 @@ void UpdatePoo();
 void UpdateFlies();
 void PoopControl();
 void UpdateWater();
+
+void LookAroundControl();
+void LickControl();
+void HairballControl();
 
 void UpdateDestroyed();
 void LoopObject(GameObject& object);
@@ -339,6 +372,8 @@ bool IsPlayerOnLadder();
 bool IsPlayerCollidingGround();
 
 void JumpCollisionControl();
+void DestroyAllObjects();
+void RestartGame();
 
 // The entry point for a PlayBuffer program
 void MainGameEntry( PLAY_IGNORE_COMMAND_LINE )
@@ -470,6 +505,12 @@ void CoordsPlatform1()
 	// water
 	p.waterPos = { };
 	p.waterLength = {  };
+
+	p.TREE_POS_X.insert(p.TREE_POS_X.begin(), { -25, 35 });
+	p.TREE_POS_Y.insert(p.TREE_POS_Y.begin(), { FLOOR_1 - 6, FLOOR_1 - 6 });
+
+	p.BUSH_POS_X.insert(p.BUSH_POS_X.begin(), { -10, 10, 12, 14 });
+	p.BUSH_POS_Y.insert(p.BUSH_POS_Y.begin(), { FLOOR_1 - 2, FLOOR_1 - 2, FLOOR_1 - 2, FLOOR_1 - 2 });
 
 	// cat treats
 	p.SALMON_POS_X.insert(p.SALMON_POS_X.begin(), { 7 });
@@ -687,19 +728,37 @@ void CreateObjects(Platform& platform)
 	objEnemy.animSpeed = .05f;
 	objEnemy.velocity = PLAYER_VELOCITY_DEFAULT;
 
-	Play::MoveSpriteOrigin("cat_go_right", 0, -3);
-	Play::MoveSpriteOrigin("cat_go_left", 0, -3);
-	Play::MoveSpriteOrigin("cat_poop_right", 0, -3);
-	Play::MoveSpriteOrigin("cat_poop_left", 0, -3);
-	Play::MoveSpriteOrigin("cat_hiss_new", 0, -3);
-	Play::MoveSpriteOrigin("cat_hiss_new_left", 0, -3);
+	//Play::MoveSpriteOrigin("cat_go_right", 0, -3);
+	//Play::MoveSpriteOrigin("cat_go_left", 0, -3);
+	Play::MoveSpriteOrigin("cat_poop_right", 0, -1);
+	Play::MoveSpriteOrigin("cat_poop_left", 0, -1);
+	Play::MoveSpriteOrigin("cat_hiss_new", 0, -2);
+	Play::MoveSpriteOrigin("cat_hiss_new_left", 0, -2);
+	Play::MoveSpriteOrigin("cat_walk_right", 0, -2);
+	Play::MoveSpriteOrigin("cat_walk_left", 0, -2);
+
+	Play::MoveSpriteOrigin("cat_sits_right", 0, 1);
+	Play::MoveSpriteOrigin("cat_sits_left", 0, 1);
+
+	Play::MoveSpriteOrigin("cat_walk_dontlook_right", 0, -2);
+	Play::MoveSpriteOrigin("cat_walk_look_right", 0, -2);
+	Play::MoveSpriteOrigin("cat_walk_dontlook_left", 0, -2);
+	Play::MoveSpriteOrigin("cat_walk_look_left", 0, -2);
+	Play::MoveSpriteOrigin("cat_look_left", 0, -2);
+	Play::MoveSpriteOrigin("cat_look_left", 0, -2);
+
+	Play::MoveSpriteOrigin("cat_hairball_right", 0, -2);
+	Play::MoveSpriteOrigin("cat_hairball_left", 0, -2);
+	Play::MoveSpriteOrigin("cat_lick_left", 0, -2);
+	Play::MoveSpriteOrigin("cat_lick_left", 0, -2);
+
 }
 
 // create the platform for a game level
 void CreatePlatform(Platform& platform)
 {
 	BuildSideWalls(platform);
-	PlaceWater(platform1);
+	PlaceWaterAndPlants(platform1);
 
 	CreateFloors(platform.GROUND_FLOOR_WIDTH, platform.GROUND_FLOOR_POS_X, platform.GROUND_FLOOR_POS_Y, 2.5f, "the_ground", TYPE_GROUND);
 
@@ -771,7 +830,7 @@ void BuildSideWalls(Platform& platform)
 	}
 }
 
-void PlaceWater(Platform& platform)
+void PlaceWaterAndPlants(Platform& platform)
 {
 	for (int i = 0; i < platform.waterLength; i++)
 	{
@@ -779,6 +838,19 @@ void PlaceWater(Platform& platform)
 		GameObject& water = Play::GetGameObject(id);
 		water.scale = 6.f;
 		water.animSpeed = 0.3f;
+	}
+
+	for (int i = 0; i < platform.TREE_POS_X.size(); i++)
+	{
+		
+		int id = Play::CreateGameObject(TYPE_TREE, { platform.TREE_POS_X[i] * TILE_SIZE, platform.TREE_POS_Y[i] * TILE_SIZE + TREE_OFFSET_Y }, 10, "new_tree");
+		Play::GetGameObject(id).scale = 1.5f;
+	}
+
+	for (int i = 0; i < platform.BUSH_POS_X.size(); i++)
+	{
+		int id = Play::CreateGameObject(TYPE_BUSH, { platform.BUSH_POS_X[i] * TILE_SIZE, platform.BUSH_POS_Y[i] * TILE_SIZE + BUSH_OFFSET_Y }, 10, "bush");
+		Play::GetGameObject(id).scale = 2.5f;
 	}
 }
 
@@ -979,7 +1051,7 @@ void UpdatePlayer()
 		}
 	}
 
-	if (Play::KeyDown(VK_SHIFT))
+	if (Play::KeyDown(VK_SHIFT) && !IsPlayerCollidingAnyPlatformUpper())
 	{
 		gameState.playerPrevState = gameState.playerState;
 		gameState.playerState = STATE_FURBALL;
@@ -1257,15 +1329,15 @@ void WalkingPlayerControls()
 	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
 	
 	(flags.right) ? 
-		Play::SetSprite(objPlayer, "cat_go_right", 0.2f) :
-		Play::SetSprite(objPlayer, "cat_go_left", 0.2f);
+		Play::SetSprite(objPlayer, "cat_walk_right", 0.2f) :
+		Play::SetSprite(objPlayer, "cat_walk_left", 0.2f);
 
  	if (Play::KeyDown(VK_RIGHT))
 	{   
 		if (IsPlayerCollidingAnyPlatformUpper())
 			objPlayer.pos.x = objPlayer.oldPos.x;
 		else
-			objPlayer.pos.x += 10;
+			objPlayer.pos.x += 15;
 		flags.right = true;	
 	}
 	else if (Play::KeyDown(VK_LEFT))
@@ -1273,7 +1345,7 @@ void WalkingPlayerControls()
 		if (IsPlayerCollidingAnyPlatformUpper())
 			objPlayer.pos.x = objPlayer.oldPos.x;
 		else
-			objPlayer.pos.x -= 10;
+			objPlayer.pos.x -= 15;
 		flags.right = false;
 	}
 
@@ -1281,10 +1353,81 @@ void WalkingPlayerControls()
 	JumpControls();
 }
 
+void LookAroundControl()
+{
+	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
+
+	if (t.idleTimer > 24)
+	{
+		flags.AnimationChanged = false;
+		objPlayer.animSpeed = 0.f;
+		t.idleTimer = 0.f;
+		(flags.right) ? Play::SetSprite(objPlayer, "cat_walk_right", 0.f) : Play::SetSprite(objPlayer, "cat_walk_left", 0.f);
+	}
+
+	else if (t.idleTimer > 18)
+	{
+		flags.AnimationChanged = true;
+		(flags.right) ? Play::SetSprite(objPlayer, "cat_walk_dontlook_right", 1.5f) : Play::SetSprite(objPlayer, "cat_walk_dontlook_left", 0.05f);
+	}
+
+	else if (t.idleTimer > 14)
+	{
+		flags.AnimationChanged = false;
+		(flags.right) ? Play::SetSprite(objPlayer, "cat_look_right", 1.5f) : Play::SetSprite(objPlayer, "cat_look_left", 0.05f);
+	}
+	else if (t.idleTimer >  10)
+	{
+		flags.AnimationChanged = true;
+		(flags.right) ? Play::SetSprite(objPlayer, "cat_walk_look_right", 1.5f) : Play::SetSprite(objPlayer, "cat_walk_look_left", 0.05f);
+	}
+	
+}
+
+void HairballControl()
+{
+	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
+
+	if (t.hairballTimer > 5.f)
+		t.hairballTimer = 0.f;
+
+	if (t.idleTimer > 5.f)
+		t.hairballTimer += DELTA_TIME;
+
+	if (t.hairballTimer / DELTA_TIME < 10 && t.hairballTimer > 0.f )
+		(flags.right) ? Play::SetSprite(objPlayer, "cat_hairball_right", 0.01f) : Play::SetSprite(objPlayer, "cat_hairball_left", 0.01f);
+	else
+	{	
+		(flags.right) ? Play::SetSprite(objPlayer, "cat_sits_right", 0.1f) : Play::SetSprite(objPlayer, "cat_sits_left", 0.1f);
+	}
+}
+
+void LickControl()
+{
+	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
+
+	if (t.lickTimer > 5.f)
+		t.lickTimer = 0.f;
+
+	if (t.idleTimer > 5.f)
+		t.lickTimer += DELTA_TIME;
+
+	if (t.lickTimer / DELTA_TIME < 10 && t.lickTimer > 0.f)
+		(flags.right) ? Play::SetSprite(objPlayer, "cat_lick_right", 0.01f) : Play::SetSprite(objPlayer, "cat_lick_left", 0.01f);
+	else
+	{
+		(flags.right) ? Play::SetSprite(objPlayer, "cat_sits_right", 0.1f) : Play::SetSprite(objPlayer, "cat_sits_left", 0.1f);
+	}
+}
+
 void IdlePlayerControls()
 {
 	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
 	objPlayer.rotation = Play::DegToRad(0);
+
+	
+
+	t.idleTimer += DELTA_TIME;
 
 	(flags.right) ?
 		Play::SetSprite(objPlayer, "cat_sits_right", 0.1f) :
@@ -1293,6 +1436,7 @@ void IdlePlayerControls()
 	if (Play::KeyDown(VK_RIGHT) || Play::KeyDown(VK_LEFT))
 	{
 			gameState.playerState = STATE_WALK;
+			t.idleTimer = 0.f;
 
 		//if (!flags.newDirection)
 		//{
@@ -1310,18 +1454,23 @@ void IdlePlayerControls()
 	// if player is standing on ladder, then attach player to ladder
 	else if (Play::KeyDown(VK_DOWN) && IsPlayerStillCollidingLadder())
 	{
+		t.idleTimer = 0.f;
 		(flags.right) ?
 			objPlayer.pos = { ladderPos.x - PLAYER_AABB_UPPER.x, ladderPos.y + TILE_SIZE * 2} :
 			objPlayer.pos = { ladderPos.x + PLAYER_AABB_UPPER.x, ladderPos.y + TILE_SIZE * 2};
 
 		flags.isGrounded = false;
 		gameState.playerState = STATE_ATTACHED;
+
 	}
 	
 	flags.isGrounded = true;
 
 	CoyoteControl();
 	JumpControls();
+
+	//HairballControl();
+	//LickControl();
 
 	Play::UpdateGameObject(objPlayer);
 }
@@ -1331,6 +1480,8 @@ void AttachedPlayerControls()
 	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
 	objPlayer.velocity = PLAYER_VELOCITY_DEFAULT;
 	objPlayer.animSpeed = 0.f;
+
+	t.idleTimer += DELTA_TIME;
 
 	// if player is not standing on ladder or colliding with ladder, then fall
 	if (!IsPlayerCollidingLadder() && !IsPlayerOnLadder())
@@ -1343,6 +1494,7 @@ void AttachedPlayerControls()
 		|| gameState.floor == 6 && objPlayer.pos.y <= platform1.LADDER_TOP_FLOOR_SIXTH + LADDER_OFFSET_Y)
 	{
 		gameState.playerState = STATE_GROUNDED;
+		t.idleTimer = 0.f;
 
 		if (gameState.floor == 2)
 			ladderPos.y = platform1.LADDER_TOP_FLOOR_SECOND;
@@ -1362,23 +1514,25 @@ void AttachedPlayerControls()
 	if (flags.right)
 	{
 		objPlayer.rotation = Play::DegToRad(-90);
-		objPlayer.pos.x = ladderPos.x - TILE_SIZE - LADDER_OFFSET_X;
+		objPlayer.pos.x = ladderPos.x - TILE_SIZE - ladderOffsetX;
 		Play::SetSprite(objPlayer, "cat_walk_right", 0.f);
 	}
 	else
 	{
 		objPlayer.rotation = Play::DegToRad(90);
-		objPlayer.pos.x = ladderPos.x + TILE_SIZE + LADDER_OFFSET_X;
+		objPlayer.pos.x = ladderPos.x + TILE_SIZE + ladderOffsetX;
 		Play::SetSprite(objPlayer, "cat_walk_left", 0.f);
 	}
 
 	if (Play::KeyDown(VK_UP))
 	{
+		t.idleTimer = 0.f;
 		objPlayer.pos.y -= 5;
 		objPlayer.animSpeed = 0.1f;
 	}
 	else if (Play::KeyDown(VK_DOWN))
 	{
+		t.idleTimer = 0.f;
 		if (IsPlayerCollidingAnyPlatform() && objPlayer.pos.y > SECOND_FLOOR_HEIGHT * TILE_SIZE)
 		{
 			(flags.right) ? objPlayer.pos.x -= 15 : objPlayer.pos.x += 15;
@@ -1395,23 +1549,32 @@ void AttachedPlayerControls()
 		objPlayer.animSpeed = 0.1f;
 	}
 	else if (Play::KeyDown(VK_LEFT))
+	{
+		t.idleTimer = 0.f;
 		flags.right = true;
+	}
 	else if (Play::KeyDown(VK_RIGHT))
+	{
+		t.idleTimer = 0.f;
 		flags.right = false;
+	}
 
 	else if (Play::KeyDown(VK_SPACE) && !IsPlayerCollidingAnyPlatformUpper())
 	{
+		t.idleTimer = 0.f;
 		objPlayer.pos.x += sin(objPlayer.rotation) * 25;
 		objPlayer.pos.y -= cos(objPlayer.rotation) * 25;
 		objPlayer.rotation = 0;
 	}
+
+	//LookAroundControl();
 }
 
 void FurballPlayerControls()
 {
 	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
 
-	Play::SetSprite(objPlayer, "furball", 0.f);
+	Play::SetSprite(objPlayer, "ball_furball", 0.f);
 
 	(flags.right) ? objPlayer.rotSpeed = 1.1f : objPlayer.rotSpeed = -1.1f;
 
@@ -1427,12 +1590,20 @@ void FurballPlayerControls()
 	if(Play::KeyDown(VK_RIGHT))
 	{
 		furballTimer = 0.f;
-		objPlayer.pos.x += 10;	
+		objPlayer.pos.x += 20;	
 	}
 	else if (Play::KeyDown(VK_LEFT))
 	{
 		furballTimer = 0.f;
-		objPlayer.pos.x -= 10;
+		objPlayer.pos.x -= 20;
+	}
+
+	if (IsPlayerCollidingAnyPlatformUpper())
+	{
+		gameState.playerState = STATE_GROUNDED;
+		objPlayer.rotSpeed = 0.f;
+		objPlayer.rotation = Play::DegToRad(0);
+		furballTimer = 0.f;
 	}
 
 	furballTimer += DELTA_TIME;
@@ -1447,18 +1618,21 @@ void JumpControls()
 	{
 		if (Play::KeyDown(VK_LEFT) && Play::KeyPressed(VK_SPACE))
 		{
+			t.idleTimer = 0.f;
 			flags.isGrounded = false;
 			objPlayer.velocity = PLAYER_VELOCITY_JUMP_LEFT;
 			gameState.playerState = STATE_JUMP;
 		}
 		else if (Play::KeyDown(VK_RIGHT) && Play::KeyPressed(VK_SPACE))
 		{
+			t.idleTimer = 0.f;
 			flags.isGrounded = false;
 			objPlayer.velocity = PLAYER_VELOCITY_JUMP_RIGHT;
 			gameState.playerState = STATE_JUMP;
 		}
 		else if (Play::KeyPressed(VK_SPACE))
 		{
+			t.idleTimer = 0.f;
 			flags.collided = false;
 			flags.isGrounded = false;
 			objPlayer.velocity = PLAYER_VELOCITY_JUMP;
@@ -1606,13 +1780,13 @@ void Hiss()
 {
 	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
 
-	if (gameState.playerPrevState == STATE_JUMP || gameState.playerPrevState == STATE_FALL || hissTimer > 1.2f)
+	if (gameState.playerPrevState == STATE_JUMP || gameState.playerPrevState == STATE_FALL || gameState.playerPrevState == STATE_ATTACHED || hissTimer > 1.2f)
 	{
 		gameState.playerState = gameState.playerPrevState;
 		hissTimer = 0.f;
 	}
 
-	(flags.right) ?
+	(flags.right && gameState.playerState != STATE_FURBALL) ?
 		Play::SetSprite(objPlayer, "cat_hiss", 0.1f) :
 		Play::SetSprite(objPlayer, "cat_hiss_new_left", 0.1f);
 	hissTimer += DELTA_TIME;
@@ -2041,16 +2215,16 @@ void DrawDebugInfo()
 
 	Play::DrawFontText("64px", "Cat state: " + std::to_string(gameState.playerState), { DISPLAY_WIDTH - 150, 50 }, Play::CENTRE);
 	Play::DrawFontText("64px", "floor: " + std::to_string(gameState.floor), { DISPLAY_WIDTH - 150, 100 }, Play::CENTRE);
-	Play::DrawFontText("64px", "cat px: " + std::to_string(objPlayer.pos.x), { DISPLAY_WIDTH - 150, 150 }, Play::CENTRE);
-	Play::DrawFontText("64px", "cat rot: " + std::to_string(objPlayer.rotation), { DISPLAY_WIDTH - 150, 200 }, Play::CENTRE);
-	Play::DrawFontText("64px", "G pos Y: " + std::to_string(groundedPosY), { DISPLAY_WIDTH - 150, 250 }, Play::CENTRE);
+	Play::DrawFontText("64px", "idle timer: " + std::to_string(t.idleTimer), { DISPLAY_WIDTH - 150, 150 }, Play::CENTRE);
+	Play::DrawFontText("64px", "hairball Timer: " + std::to_string(t.lickTimer), { DISPLAY_WIDTH - 150, 200 }, Play::CENTRE);
+	Play::DrawFontText("64px", "animation: " + std::to_string(flags.AnimationChanged), { DISPLAY_WIDTH - 150, 250 }, Play::CENTRE);
 
 	//Play::DrawFontText("105px", "Score: " + std::to_string(gameState.score), { DISPLAY_WIDTH / 2 , 50 }, Play::CENTRE);
 
 	Play::DrawFontText("64px", "treats: " + std::to_string(gameState.treats), { DISPLAY_WIDTH - 150, 300 }, Play::CENTRE);
 	Play::DrawFontText("64px", "grounded " + std::to_string(flags.isGrounded ), { DISPLAY_WIDTH - 150, 350 }, Play::CENTRE);
-	Play::DrawFontText("64px", "furballTimer" + std::to_string(furballTimer), { DISPLAY_WIDTH - 150, 400 }, Play::CENTRE);
-	Play::DrawFontText("64px", "Flea vy : " + std::to_string(objEnemy.velocity.y), { 50, 150 }, Play::CENTRE);
+	//Play::DrawFontText("64px", "furballTimer" + std::to_string(furballTimer), { DISPLAY_WIDTH - 150, 400 }, Play::CENTRE);
+	//Play::DrawFontText("64px", "Flea vy : " + std::to_string(objEnemy.velocity.y), { 50, 150 }, Play::CENTRE);
 
 	Play::SetDrawingSpace(Play::WORLD);
 }
@@ -2095,6 +2269,20 @@ void DrawLevel()
 		GameObject& ground = Play::GetGameObject(groundId);
 		Play::DrawObjectRotated(ground);
 		//Play::DrawRect(Point2D{ ground.pos.x - GROUND_PLATFORM_AABB.x, ground.pos.y - GROUND_PLATFORM_AABB.y }, Point2D{ ground.pos.x + GROUND_PLATFORM_AABB.x, ground.pos.y + GROUND_PLATFORM_AABB.y }, Play::cWhite);
+	}
+
+	vector <int> vBushes = Play::CollectGameObjectIDsByType(TYPE_BUSH);
+	for (int bushId : vBushes)
+	{
+		GameObject& bush = Play::GetGameObject(bushId);
+		Play::DrawObjectRotated(bush);
+	}
+
+	vector <int> vTrees = Play::CollectGameObjectIDsByType(TYPE_TREE);
+	for (int treeId : vTrees)
+	{
+		GameObject& tree = Play::GetGameObject(treeId);
+		Play::DrawObjectRotated(tree);
 	}
 
 	vector <int> vWater = Play::CollectGameObjectIDsByType(TYPE_WATER);
@@ -2178,6 +2366,114 @@ void ResetPlayer()
 	Play::GetGameObjectByType(TYPE_PLAYER).pos = { PLAYER_START_POS.x * TILE_SIZE, PLAYER_START_POS.y * TILE_SIZE - PLAYER_OFFSET_Y };
 	Play::GetGameObjectByType(TYPE_PLAYER).velocity = PLAYER_VELOCITY_DEFAULT;
 }
+
+void DestroyAllObjects()
+{
+	vector <int> vGrounds = Play::CollectGameObjectIDsByType(TYPE_GROUND);
+	for (int groundId : vGrounds)
+	{
+		Play::GetGameObject(groundId).type = TYPE_DESTROYED;
+	}
+
+	vector <int> vPlatforms = Play::CollectGameObjectIDsByType(TYPE_PLATFORM);
+	for (int platformId : vPlatforms)
+	{
+		Play::GetGameObject(platformId).type = TYPE_DESTROYED;
+	}
+
+	vector <int> vLadders = Play::CollectGameObjectIDsByType(TYPE_LADDER);
+	for (int ladderId : vLadders)
+	{
+		Play::GetGameObject(ladderId).type = TYPE_DESTROYED;
+	}
+
+	vector <int> vWalls = Play::CollectGameObjectIDsByType(TYPE_WALL);
+	for (int wallId : vWalls)
+	{
+		Play::GetGameObject(wallId).type = TYPE_DESTROYED;
+	}
+
+	vector <int> vBushes = Play::CollectGameObjectIDsByType(TYPE_BUSH);
+	for (int bushId : vBushes)
+	{
+		Play::GetGameObject(bushId).type = TYPE_DESTROYED;
+	}
+
+	vector <int> vTrees = Play::CollectGameObjectIDsByType(TYPE_TREE);
+	for (int treeId : vTrees)
+	{
+		Play::GetGameObject(treeId).type = TYPE_DESTROYED;
+	}
+
+	vector <int> vTreats = Play::CollectGameObjectIDsByType(TYPE_TREAT);
+	for (int treatId : vTreats)
+	{
+		Play::GetGameObject(treatId).type = TYPE_DESTROYED;
+	}
+
+	vector <int> vWater = Play::CollectGameObjectIDsByType(TYPE_WATER);
+	for (int waterId : vWater)
+	{
+		Play::GetGameObject(waterId).type = TYPE_DESTROYED;
+	}
+
+	vector <int> vFleas = Play::CollectGameObjectIDsByType(TYPE_FLEA);
+	for (int fleaId : vFleas)
+	{
+		Play::GetGameObject(fleaId).type = TYPE_DESTROYED;
+	}
+
+	vector <int> vBoxes = Play::CollectGameObjectIDsByType(TYPE_BOX);
+	for (int boxId : vBoxes)
+	{
+		Play::GetGameObject(boxId).type = TYPE_DESTROYED;
+	}
+
+	vector <int> vFlowers = Play::CollectGameObjectIDsByType(TYPE_FLOWER);
+	for (int flowerId : vFlowers)
+	{
+		Play::GetGameObject(flowerId).type = TYPE_DESTROYED;
+	}
+
+	vector <int> vPoos = Play::CollectGameObjectIDsByType(TYPE_POO);
+	for (int pooId : vPoos)
+	{
+		Play::GetGameObject(pooId).type = TYPE_DESTROYED;
+	}
+
+	vector <int> vRFlies = Play::CollectGameObjectIDsByType(TYPE_RIGHT_FLY);
+	for (int flyId : vRFlies)
+	{
+		Play::GetGameObject(flyId).type = TYPE_DESTROYED;
+	}
+
+	vector <int> vLFlies = Play::CollectGameObjectIDsByType(TYPE_LEFT_FLY);
+	for (int flyId : vLFlies)
+	{
+		Play::GetGameObject(flyId).type = TYPE_DESTROYED;
+	}
+
+	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
+	objPlayer.type = TYPE_DESTROYED;
+
+	GameObject& objEnemy = Play::GetGameObjectByType(TYPE_ENEMY);
+	objEnemy.type = TYPE_DESTROYED;
+}
+
+void RestartGame()
+{
+	gameState.score = 0;
+	gameState.lives = 9;
+	gameState.treats = 0;
+	gameState.floor = 0;
+	gameState.playerState = STATE_GROUNDED;
+	gameState.playerPrevState = STATE_GROUNDED;
+	gameState.enemyState = STATE_HIDE;
+
+	CreateGamePlay();
+}
+
+
 
 
 
