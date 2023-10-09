@@ -1502,6 +1502,10 @@ struct GameObject
 	int radius{ 0 };
 	float scale{ 1 };
 	int lastFrameUpdated{ -1 };
+	int state{ 0 };
+	bool right{ true };
+	Point2D platformPos{ 0.0f, 0.0f };
+	bool activated{ false };
 
 	// Add your own data members here if you want to
 	PLAY_ADD_GAMEOBJECT_MEMBERS

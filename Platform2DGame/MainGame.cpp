@@ -15,7 +15,8 @@ const int COLLISION_BOOST{ 25 }; // pixels
 // offsets
 const int CAMERA_OFFSET_X{ 600 }; // pixels
 const int PLAYER_OFFSET_Y{ 8 }; // pixels
-const int FLEA_OFFSET_Y{ 15 }; // pixels
+const int FLEA_OFFSET_Y{ 18 }; // pixels
+const int FLEA_OFFSET_Y_GROUND{ 60 }; // pixels
 const int BOX_OFFSET_Y{ 20 }; // pixels
 const int WALL_OFFSET{ 20 }; // pixels
 const int FLOOR_OFFSET{ 18 }; // pixels
@@ -26,7 +27,8 @@ const int TILE_SIZE{ 38 }; // pixels
 const int POO_OFFSET_Y{ 30 }; // pixels
 const int WATER_OFFSET_Y{ 10 }; // pixels
 const int TREE_OFFSET_Y{ 10 }; // pixels
-const int BUSH_OFFSET_Y{ 10 }; // pixels
+const int BUSH_OFFSET_Y{ 5 }; // pixels
+
 // other measurments are in tiles
 // width and height in tiles, rounded to the bigger side so all screen is covered
 const int TILE_HEIGHT{ 19 };
@@ -42,7 +44,7 @@ const int FOURTH_FLOOR_HEIGHT{ 4 };
 const int FIFTH_FLOOR_HEIGHT{ 2 };
 const int SIXTH_FLOOR_HEIGHT{ -5 };
 
-const Point2D PLAYER_START_POS{ 2, GROUND_FLOOR_HEIGHT - 2 };
+const Point2D PLAYER_START_POS{ -5, GROUND_FLOOR_HEIGHT - 2 };
 const int PLAYER_POS_GROUND_FLOOR{ GROUND_FLOOR_HEIGHT - 2 };
 const int PLAYER_POS_SECOND_FLOOR{ SECOND_FLOOR_HEIGHT - 3 };
 const int PLAYER_POS_THIRD_FLOOR{ THIRD_FLOOR_HEIGHT - 3 };
@@ -50,7 +52,8 @@ const int PLAYER_POS_FOURTH_FLOOR{ FOURTH_FLOOR_HEIGHT - 3 };
 const int PLAYER_POS_FIFTH_FLOOR{ FIFTH_FLOOR_HEIGHT - 3 };
 const int PLAYER_POS_SIXTH_FLOOR{ SIXTH_FLOOR_HEIGHT - 3 };
 
-const Point2D FLEA_START_POS{ 4, SECOND_FLOOR_HEIGHT - 3 };
+const Point2D ENEMY_START_POS{ -8, SECOND_FLOOR_HEIGHT - 3 };
+const Point2D FLEA_START_POS{ 5, THIRD_FLOOR_HEIGHT - 3 };
 const Point2D RIGHT_FLY_START_POS{ -35 , THIRD_FLOOR_HEIGHT };
 const Point2D LEFT_FLY_START_POS{ 35 , THIRD_FLOOR_HEIGHT };
 
@@ -59,19 +62,23 @@ const int FLY_SPEED{ 2 };
 const Vector2D PLAYER_VELOCITY_DEFAULT{ 0, 0 };
 const Vector2D PLAYER_VELOCITY_WALK{ 10, 0 };
 
-const Vector2D PLAYER_VELOCITY_JUMP{ 0, -9 };
-const Vector2D PLAYER_VELOCITY_JUMP_LEFT{ -2, -9 }; 
-const Vector2D PLAYER_VELOCITY_JUMP_RIGHT{ 2, -9 };
+const Vector2D PLAYER_VELOCITY_JUMP{ 0, -20 };
+const Vector2D PLAYER_VELOCITY_JUMP_LEFT{ -10, -20 }; 
+const Vector2D PLAYER_VELOCITY_JUMP_RIGHT{ 10, -20 };
 
 const Vector2D ENEMY_VELOCITY_DEFAULT{ 0, 0 };
-const Vector2D ENEMY_VELOCITY_JUMP{ 2, -4 };
-const Vector2D ENEMY_VELOCITY_WALK{ 3, 0 };
+const Vector2D ENEMY_VELOCITY_JUMP_RIGHT{ 5, -20 };
+const Vector2D ENEMY_VELOCITY_JUMP_LEFT{ -5, -20 };
+const Vector2D ENEMY_VELOCITY_WALK_RIGHT{ 3, 0 };
+const Vector2D ENEMY_VELOCITY_WALK_LEFT{ -3, 0 };
+const Vector2D ENEMY_VELOCITY_FALL_RIGHT{ 1, 5 };
+const Vector2D ENEMY_VELOCITY_FALL_LEFT{ -1, 5 };
 
 const float FALL_MULTIPLIER{ 2.5f };
 const float LOW_JUMP_MULTIPLIER{ 3.5f };
 
-const Vector2D PLAYER_VELOCITY_FALL_RIGHT{ 1, 2 };
-const Vector2D PLAYER_VELOCITY_FALL_LEFT{ -1, 2 };
+const Vector2D PLAYER_VELOCITY_FALL_RIGHT{ 1, 12 };
+const Vector2D PLAYER_VELOCITY_FALL_LEFT{ -1, 12 };
 
 // all AABBs in pixels
 const Vector2D PLAYER_AABB{ 30, 45 };
@@ -87,43 +94,20 @@ const Vector2D WALL_AABB{ 60, 20 };
 const Vector2D WATER_AABB{ 20, 20 };
 
 const Vector2D GRAVITY_ACCELERATION{ 0, 0.5f };
-const Vector2D GRAVITY{ 0, 10.f };
+const Vector2D GRAVITY{ 0, 22.f };
+const Vector2D FLEA_GRAVITY{ 0, 12.f };
 const Vector2D ACCELERATION{ 0, 0.3f };
 const Vector2D FRICTION{ 0.5f, 0.5f };
 
 Point2D cameraPos{ 0, 0 };
 Point2D platformPos{ 0, 0 };
+Point2D platformPosFlea{ 0, 0 };
 Point2D ladderPos{ 0, 0 };
 
-int groundedPosY = 0;
-
-struct Timers
-{
-	float walkTimer{ 0.f };
-	float jumpTimer{ 0.f };
-	float animationTimer{ 0.f };
-	float coyoteTimer{ 0.f };
-	float fleaTimer{ 0.f };
-	float furballTimer{ 0.f };
-	float hissTimer{ 0.f };
-	float poopTimer{ 0.f };
-	float idleTimer{ 0.f };
-	float lookAroundTimer{ 0.f };
-	float lickTimer{ 0.f };
-	float hairballTimer{ 0.f };
-};
-
-float furballTimer = 0.f;
-float hissTimer = 0.f;
-float fleaTimer = 0.f;
-float walkTimer = 0.f;
-float jumpTimer = 0.f;
-float poopTimer = 0.f;
-float animationTimer = 0.f;
-float coyoteTimer = 0.f;
+float distanceFromPlayer{ 0.f };
 float gravityMultiplyer = 1.f;
-
 int ladderOffsetX = LADDER_OFFSET_X_STICK;
+int groundedPosY = 0;
 
 enum PlayerState
 {
@@ -151,6 +135,7 @@ enum GameObjectType
 	TYPE_WATER,
 	TYPE_TREAT,
 	TYPE_FLOWER,
+	TYPE_STAR,
 	TYPE_POO,
 	TYPE_TREE,
 	TYPE_BUSH,
@@ -260,6 +245,22 @@ struct Platform
 	vector <int> BOX_POS_Y{  };
 };
 
+struct Timers
+{
+	float walkTimer{ 0.f };
+	float jumpTimer{ 0.f };
+	float animationTimer{ 0.f };
+	float coyoteTimer{ 0.f };
+	float fleaTimer{ 0.f };
+	float furballTimer{ 0.f };
+	float hissTimer{ 0.f };
+	float poopTimer{ 0.f };
+	float idleTimer{ 0.f };
+	float lookAroundTimer{ 0.f };
+	float lickTimer{ 0.f };
+	float hairballTimer{ 0.f };
+};
+
 struct Flags
 {
 	bool playMode{ true };
@@ -268,7 +269,10 @@ struct Flags
 	bool music{ false };
 	bool levelPassed{ false };
 	bool levelInfo{ true };
+
 	bool right{ true };
+	bool fleaRight{ true };
+
 	bool jumping{ false };
 	bool isAnimating{ false };
 	bool isClimbing{ false };
@@ -293,7 +297,7 @@ struct GameState
 
 	PlayerState playerState = STATE_GROUNDED;
 	PlayerState playerPrevState = STATE_GROUNDED;
-	PlayerState enemyState = STATE_HIDE;
+	PlayerState enemyState = STATE_WALK;
 	GameFlow state = STATE_PLAY;
 };
 
@@ -311,7 +315,6 @@ void CoyoteControl();
 void SetFloor();
 void SetPlayerPos(int pos);
 void ResetPlayer();
-void PlayerAndEnemyRelations();
 
 void Draw();
 void DrawLevel();
@@ -332,7 +335,6 @@ void PlaceWaterAndPlants(Platform& platform);
 void Jump();
 void Fall();
 void Hiss();
-void FleaJump();
 void WalkingPlayerControls();
 void IdlePlayerControls();
 void AttachedPlayerControls();
@@ -340,13 +342,18 @@ void FurballPlayerControls();
 void JumpControls();
 
 void UpdatePlayer();
-void UpdateEnemy();
 void UpdateFleas();
 void UpdateTreats();
 void UpdatePoo();
 void UpdateFlies();
 void PoopControl();
 void UpdateWater();
+void UpdateStars();
+
+void WalkingFlea(GameObject& flea);
+void FallingFlea(GameObject& flea);
+void FleaJump(GameObject& flea);
+void AttachedFlea(GameObject& flea);
 
 void LookAroundControl();
 void LickControl();
@@ -354,13 +361,14 @@ void HairballControl();
 
 void UpdateDestroyed();
 void LoopObject(GameObject& object);
+float DistanceFromPlayer(const GameObject& object);
+float DistanceYFromPlayer(const GameObject& object);	
 
 float DotProduct(const Vector2D& v1, const Vector2D& v2);
 void Normalise(Vector2D& v);
 float Randomize(int range, float multiplier = 1.0f);
 
 bool IsPlayerColliding(const GameObject& object);
-bool IsEnemyColliding(const GameObject& object);
 bool IsPlayerCollidingUpperPart(const GameObject& object);
 bool IsPlayerCollidingBottomPart(const GameObject& object);
 bool IsPlayerCollidingAnyPlatform();
@@ -369,7 +377,11 @@ bool IsPlayerCollidingAnyPlatformUpper();
 bool IsPlayerCollidingLadder();
 bool IsPlayerStillCollidingLadder();
 bool IsPlayerOnLadder();
+bool IsPlayerCollidingWalls();
 bool IsPlayerCollidingGround();
+
+bool IsFleaCollidingAnyPlatform(GameObject& flea);
+bool IsFleaColliding(GameObject& flea, const GameObject& object);
 
 void JumpCollisionControl();
 void DestroyAllObjects();
@@ -393,12 +405,13 @@ bool MainGameUpdate( float elapsedTime )
 		case STATE_PLAY:
 		{
 			UpdatePlayer();
-			UpdateEnemy();
+			//UpdateEnemy();
 			UpdateFleas();
 			UpdateTreats();
 			UpdatePoo();
 			UpdateFlies();
 			UpdateWater();
+			UpdateStars();
 			break;
 		}
 		case STATE_PAUSE:
@@ -546,13 +559,13 @@ void CoordsPlatform2()
 	const int FLOOR_6 = p.SIXTH_FLOOR_HEIGHT;
 
 	// player and enemies start position
-	p.playerStartPos = { 2, FLOOR_1 - 2 };
-	p.fleaStartPos = { -8, FLOOR_2 };
+	p.playerStartPos = { -5, FLOOR_1 - 2 };
+	p.fleaStartPos = { -15, FLOOR_2 };
 
 	// horizontal platforms / floors
-	p.GROUND_FLOOR_WIDTH.insert(p.GROUND_FLOOR_WIDTH.begin(), {  });
-	p.GROUND_FLOOR_POS_X.insert(p.GROUND_FLOOR_POS_X.begin(), {  });
-	p.GROUND_FLOOR_POS_Y.insert(p.GROUND_FLOOR_POS_Y.begin(), {  });
+	p.GROUND_FLOOR_WIDTH.insert(p.GROUND_FLOOR_WIDTH.begin(), { 30, 30 });
+	p.GROUND_FLOOR_POS_X.insert(p.GROUND_FLOOR_POS_X.begin(), { p.LIMIT_LEFT, 30 });
+	p.GROUND_FLOOR_POS_Y.insert(p.GROUND_FLOOR_POS_Y.begin(), { FLOOR_1, FLOOR_1 });
 
 	p.C_FLOOR_WIDTH.insert(p.C_FLOOR_WIDTH.begin(), {  });
 	p.C_FLOOR_POS_X.insert(p.C_FLOOR_POS_X.begin(), {  });
@@ -591,7 +604,8 @@ void CoordsPlatform2()
 	p.WAFFLE_POS_Y.insert(p.WAFFLE_POS_Y.begin(), {  });
 
 	// water
-	p.waterPos = {  };
+	p.waterPos = { 0, FLOOR_1 };
+	p.waterLength = { 30 };
 
 	// cat treats
 	p.SALMON_POS_X.insert(p.SALMON_POS_X.begin(), {  });
@@ -721,12 +735,19 @@ void CreateObjects(Platform& platform)
 	objPlayer.velocity = PLAYER_VELOCITY_DEFAULT;
 	objPlayer.scale = 4.5f;
 
-	id = Play::CreateGameObject(TYPE_ENEMY, { platform.fleaStartPos.x * TILE_SIZE, platform.fleaStartPos.y * TILE_SIZE - FLEA_OFFSET_Y }, 10, "bug_right");
+	id = Play::CreateGameObject(TYPE_FLEA, { platform.fleaStartPos.x * TILE_SIZE - TILE_SIZE * 20, platform.fleaStartPos.y * TILE_SIZE - FLEA_OFFSET_Y}, 10, "bug_right");
 	GameObject& objEnemy = Play::GetGameObject(id);
 	objEnemy.scale = 0.5f;
 	objEnemy.rotation = Play::DegToRad(-30);
 	objEnemy.animSpeed = .05f;
-	objEnemy.velocity = PLAYER_VELOCITY_DEFAULT;
+	objEnemy.velocity = ENEMY_VELOCITY_FALL_RIGHT;
+	objEnemy.state = STATE_FALL;
+
+	id = Play::CreateGameObject(TYPE_FLEA, { platform.fleaStartPos.x * TILE_SIZE, platform.fleaStartPos.y * TILE_SIZE - FLEA_OFFSET_Y }, 10, "bug_right");
+	GameObject& objFlea = Play::GetGameObject(id);
+	objFlea.velocity = ENEMY_VELOCITY_FALL_RIGHT;
+	objFlea.state = STATE_FALL;
+	objFlea.scale = 0.5f;
 
 	//Play::MoveSpriteOrigin("cat_go_right", 0, -3);
 	//Play::MoveSpriteOrigin("cat_go_left", 0, -3);
@@ -752,13 +773,16 @@ void CreateObjects(Platform& platform)
 	Play::MoveSpriteOrigin("cat_lick_left", 0, -2);
 	Play::MoveSpriteOrigin("cat_lick_left", 0, -2);
 
+	Play::MoveSpriteOrigin("cat_reborn_right", 0, -2);
+	Play::MoveSpriteOrigin("cat_reborn_left", 0, -2);
+
 }
 
 // create the platform for a game level
 void CreatePlatform(Platform& platform)
 {
 	BuildSideWalls(platform);
-	PlaceWaterAndPlants(platform1);
+	PlaceWaterAndPlants(platform);
 
 	CreateFloors(platform.GROUND_FLOOR_WIDTH, platform.GROUND_FLOOR_POS_X, platform.GROUND_FLOOR_POS_Y, 2.5f, "the_ground", TYPE_GROUND);
 
@@ -834,10 +858,13 @@ void PlaceWaterAndPlants(Platform& platform)
 {
 	for (int i = 0; i < platform.waterLength; i++)
 	{
-		int id = Play::CreateGameObject(TYPE_WATER, { platform.waterPos.x * TILE_SIZE + TILE_SIZE * i, platform.waterPos.y * TILE_SIZE }, 10, "water_long");
+		int id = Play::CreateGameObject(TYPE_WATER, { platform.waterPos.x * TILE_SIZE + TILE_SIZE * i, platform.waterPos.y * TILE_SIZE - 20 }, 10, "water_long");
 		GameObject& water = Play::GetGameObject(id);
-		water.scale = 6.f;
+		water.scale = 7.f;
 		water.animSpeed = 0.3f;
+		id = Play::CreateGameObject(TYPE_PLATFORM, { platform.waterPos.x * TILE_SIZE + TILE_SIZE * i, platform.waterPos.y * TILE_SIZE + TILE_SIZE }, 10, "dirrt");
+		GameObject& dirt = Play::GetGameObject(id);
+		dirt.scale = 2.5f;
 	}
 
 	for (int i = 0; i < platform.TREE_POS_X.size(); i++)
@@ -887,12 +914,6 @@ void ItemsPlacement(Platform& platform)
 			"wood_box");
 		GameObject& box = Play::GetGameObject(id);
 		box.scale = 2.5f;
-	}
-
-	if (platform.isWater)
-	{
-		int id = Play::CreateGameObject(TYPE_WATER, platform.waterPos * TILE_SIZE, 10, "water_long");
-		Play::GetGameObject(id).scale = 6.f;
 	}
 
 	for (int i = 0; i < platform.FLOWER_POS_X.size(); i++)
@@ -985,16 +1006,16 @@ void PoopControl()
 
 	if (gameState.treats > 0 && gameState.floor < 2)
 	{
-		poopTimer += DELTA_TIME;
+		t.poopTimer += DELTA_TIME;
 
-		if (poopTimer / DELTA_TIME < 10 && poopTimer > 0.f)
+		if (t.poopTimer / DELTA_TIME < 10 && t.poopTimer > 0.f)
 		{
 			(flags.right) ? Play::SetSprite(objPlayer, "cat_poop_right", 0.05f) : Play::SetSprite(objPlayer, "cat_poop_left", 0.05f) ;
 		}
 		else
 		{
 			gameState.treats = 0;
-			poopTimer = 0.f;
+			t.poopTimer = 0.f;
 			int id = Play::CreateGameObject(TYPE_POO, { objPlayer.pos.x, objPlayer.pos.y + POO_OFFSET_Y}, 10, "the_poo");
 			GameObject& poo = Play::GetGameObject(id);
 			poo.scale = 2.f;
@@ -1057,90 +1078,7 @@ void UpdatePlayer()
 		gameState.playerState = STATE_FURBALL;
 	}
 
-	PlayerAndEnemyRelations();
-
 	Play::UpdateGameObject(objPlayer);
-}
-
-void UpdateEnemy()
-{
-	GameObject& objEnemy = Play::GetGameObjectByType(TYPE_ENEMY);
-	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
-
-	switch (gameState.enemyState)
-	{
-		case STATE_HIDE:
-		{
-			fleaTimer += DELTA_TIME;
-			break;
-		}
-		case STATE_WALK:
-		{		
-			objEnemy.rotation = 0;
-			fleaTimer += DELTA_TIME;
-			break;
-		}
-		case STATE_FALL:
-		{		
-			break;
-		}
-		case STATE_JUMP:
-		{		
-			FleaJump();
-			break;
-		}
-		case STATE_ATTACHED:
-		{
-			
-			break;
-		}
-	}
-
-	PlayerAndEnemyRelations();
-
-	Play::UpdateGameObject(objEnemy);
-}
-
-void PlayerAndEnemyRelations()
-{
-	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
-	GameObject& objEnemy = Play::GetGameObjectByType(TYPE_ENEMY);
-
-	/*if (IsEnemyColliding(objPlayer))
-	{
-		objEnemy.pos = FLEA_START_POS * TILE_SIZE;
-		gameState.enemyState = STATE_HIDE;
-		gameState.playerState = STATE_HISS;
-		gameState.lives--;
-	}*/
-
-
-	if (objEnemy.pos.x > platform1.LIMIT_RIGHT * TILE_SIZE)
-		objEnemy.pos.x = platform1.LIMIT_LEFT * TILE_SIZE;
-
-	if (fleaTimer > 1.0f)
-	{
-		objEnemy.velocity = ENEMY_VELOCITY_WALK;
-		gameState.enemyState = STATE_WALK;
-	}
-
-	if (fleaTimer > 3.f)
-	{
-		objEnemy.rotation = Play::DegToRad(-30);
-		objEnemy.velocity = ENEMY_VELOCITY_JUMP;
-		gameState.enemyState = STATE_JUMP;
-		fleaTimer = 1.f;
-	}
-
-	if (IsPlayerCollidingUpperPart(objEnemy))
-	{
-		objEnemy.pos = FLEA_START_POS * TILE_SIZE;
-		gameState.enemyState = STATE_HIDE;
-		gameState.playerPrevState = gameState.playerState;
-		gameState.playerState = STATE_HISS;
-		gameState.lives--;
-
-	}
 }
 
 void UpdateFleas()
@@ -1151,13 +1089,29 @@ void UpdateFleas()
 	{
 		GameObject& flea = Play::GetGameObject(fleaId);
 
-		if (fleaTimer > 2.f)
+		switch (flea.state)
 		{
-			flea.pos.x += 10;
-			fleaTimer = 0.f;
+			case STATE_HIDE:
+			{
+				t.fleaTimer += DELTA_TIME;
+				break;
+			}
+			case STATE_WALK:
+			{
+				WalkingFlea(flea);
+				break;
+			}
+			case STATE_FALL:
+			{
+				FallingFlea(flea);
+				break;
+			}
+			case STATE_JUMP:
+			{
+				FleaJump(flea);
+				break;
+			}
 		}
-		//LoopObject(flea);
-		fleaTimer += DELTA_TIME;
 		Play::UpdateGameObject(flea);
 	}
 }
@@ -1279,17 +1233,29 @@ void UpdateWater()
 	}
 }
 
+void UpdateStars()
+{
+	vector <int> vStars = Play::CollectGameObjectIDsByType(TYPE_STAR);
+
+	for (int starId : vStars)
+	{
+		GameObject& star = Play::GetGameObject(starId);
+
+		Play::UpdateGameObject(star);
+	}
+}
+
 // timers 
 void CoyoteControl()
 {
 	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
 
 	if (!IsPlayerCollidingAnyPlatform() && !IsPlayerStillCollidingLadder() && gameState.floor != 1)
-		coyoteTimer += DELTA_TIME;
+		t.coyoteTimer += DELTA_TIME;
 
-	if (!IsPlayerCollidingAnyPlatform() && !IsPlayerStillCollidingLadder() && !IsPlayerCollidingLadder() && objPlayer.pos.y < PLAYER_START_POS.y * TILE_WIDTH && coyoteTimer > 0.1f)
+	if (!IsPlayerCollidingAnyPlatform() && !IsPlayerStillCollidingLadder() && !IsPlayerCollidingLadder() && objPlayer.pos.y < PLAYER_START_POS.y * TILE_WIDTH && t.coyoteTimer > 0.1f)
 	{
-		coyoteTimer = 0.f;
+		t.coyoteTimer = 0.f;
 		flags.isGrounded = false;
 		gameState.playerState = STATE_FALL;
 	}
@@ -1299,13 +1265,13 @@ void WalkingDurationControl(float time)
 {
 	if (gameState.playerState == STATE_WALK)
 	{
-		if (walkTimer > 0.7f && !Play::KeyDown(VK_LEFT) && !Play::KeyDown(VK_RIGHT))
+		if (t.walkTimer > 0.7f && !Play::KeyDown(VK_LEFT) && !Play::KeyDown(VK_RIGHT))
 		{
 			gameState.playerState = STATE_GROUNDED;
-			walkTimer = 0.f;
+			t.walkTimer = 0.f;
 		}
 		else
-			walkTimer += time;
+			t.walkTimer += time;
 	}
 }
 
@@ -1313,13 +1279,13 @@ void AnimationDurationControl(float time)
 {
 	if (flags.isAnimating)
 	{
-		if (animationTimer > 0.7f)
+		if (t.animationTimer > 0.7f)
 		{
 			flags.isAnimating = false;
-			animationTimer = 0.f;
+			t.animationTimer = 0.f;
 		}
 		else
-			animationTimer += time;
+			t.animationTimer += time;
 	}
 }
 
@@ -1337,7 +1303,7 @@ void WalkingPlayerControls()
 		if (IsPlayerCollidingAnyPlatformUpper())
 			objPlayer.pos.x = objPlayer.oldPos.x;
 		else
-			objPlayer.pos.x += 15;
+			objPlayer.pos.x += 20;
 		flags.right = true;	
 	}
 	else if (Play::KeyDown(VK_LEFT))
@@ -1345,7 +1311,7 @@ void WalkingPlayerControls()
 		if (IsPlayerCollidingAnyPlatformUpper())
 			objPlayer.pos.x = objPlayer.oldPos.x;
 		else
-			objPlayer.pos.x -= 15;
+			objPlayer.pos.x -= 20;
 		flags.right = false;
 	}
 
@@ -1493,9 +1459,6 @@ void AttachedPlayerControls()
 		|| gameState.floor == 5 && objPlayer.pos.y <= platform1.LADDER_TOP_FLOOR_FIFTH + LADDER_OFFSET_Y
 		|| gameState.floor == 6 && objPlayer.pos.y <= platform1.LADDER_TOP_FLOOR_SIXTH + LADDER_OFFSET_Y)
 	{
-		gameState.playerState = STATE_GROUNDED;
-		t.idleTimer = 0.f;
-
 		if (gameState.floor == 2)
 			ladderPos.y = platform1.LADDER_TOP_FLOOR_SECOND;
 		else if (gameState.floor == 3)
@@ -1507,8 +1470,10 @@ void AttachedPlayerControls()
 		else if (gameState.floor == 6)
 			ladderPos.y = platform1.LADDER_TOP_FLOOR_SIXTH;
 
+		t.idleTimer = 0.f;
 		SetPlayerPos(ladderPos.y);
 		objPlayer.pos.x = ladderPos.x;
+		gameState.playerState = STATE_GROUNDED;
 	}
 
 	if (flags.right)
@@ -1527,7 +1492,7 @@ void AttachedPlayerControls()
 	if (Play::KeyDown(VK_UP))
 	{
 		t.idleTimer = 0.f;
-		objPlayer.pos.y -= 5;
+		objPlayer.pos.y -= 10;
 		objPlayer.animSpeed = 0.1f;
 	}
 	else if (Play::KeyDown(VK_DOWN))
@@ -1535,7 +1500,7 @@ void AttachedPlayerControls()
 		t.idleTimer = 0.f;
 		if (IsPlayerCollidingAnyPlatform() && objPlayer.pos.y > SECOND_FLOOR_HEIGHT * TILE_SIZE)
 		{
-			(flags.right) ? objPlayer.pos.x -= 15 : objPlayer.pos.x += 15;
+			(flags.right) ? objPlayer.pos.x -= 20 : objPlayer.pos.x += 20;
 
 			(groundedPosY > PLAYER_START_POS.y * TILE_SIZE - PLAYER_OFFSET_Y) ?
 				SetPlayerPos(PLAYER_START_POS.y * TILE_SIZE) :
@@ -1544,7 +1509,7 @@ void AttachedPlayerControls()
 			gameState.playerState = STATE_GROUNDED;
 		}
 		else
-			objPlayer.pos.y += 5;
+			objPlayer.pos.y += 10;
 
 		objPlayer.animSpeed = 0.1f;
 	}
@@ -1578,23 +1543,23 @@ void FurballPlayerControls()
 
 	(flags.right) ? objPlayer.rotSpeed = 1.1f : objPlayer.rotSpeed = -1.1f;
 
-	if (furballTimer > 2.f  && !Play::KeyDown(VK_RIGHT) && !Play::KeyDown(VK_LEFT))
+	if (t.furballTimer > 2.f  && !Play::KeyDown(VK_RIGHT) && !Play::KeyDown(VK_LEFT))
 	{
 		gameState.playerState = STATE_GROUNDED;
 		objPlayer.rotSpeed = 0.f;
 		objPlayer.rotation = Play::DegToRad(0);
-		furballTimer = 0.f;
+		t.furballTimer = 0.f;
 	}
 	
 	// && objPlayer.rotation == Play::DegToRad(0)
 	if(Play::KeyDown(VK_RIGHT))
 	{
-		furballTimer = 0.f;
+		t.furballTimer = 0.f;
 		objPlayer.pos.x += 20;	
 	}
 	else if (Play::KeyDown(VK_LEFT))
 	{
-		furballTimer = 0.f;
+		t.furballTimer = 0.f;
 		objPlayer.pos.x -= 20;
 	}
 
@@ -1603,10 +1568,102 @@ void FurballPlayerControls()
 		gameState.playerState = STATE_GROUNDED;
 		objPlayer.rotSpeed = 0.f;
 		objPlayer.rotation = Play::DegToRad(0);
-		furballTimer = 0.f;
+		t.furballTimer = 0.f;
 	}
 
-	furballTimer += DELTA_TIME;
+	t.furballTimer += DELTA_TIME;
+}
+
+// controls for different flea states
+void WalkingFlea(GameObject& flea)
+{
+	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
+
+	flea.velocity = (flea.right) ? ENEMY_VELOCITY_WALK_RIGHT : ENEMY_VELOCITY_WALK_LEFT;
+	flea.rotation = 0;
+	LoopObject(flea);
+
+	(flea.right) ? Play::SetSprite(flea, "bug_right", 0.05f) : Play::SetSprite(flea, "bug_left", 0.05f);
+
+	if (DistanceFromPlayer(flea) < 300 && DistanceYFromPlayer(flea) < TILE_SIZE * 2)
+	{
+		flea.velocity = (flea.right) ? ENEMY_VELOCITY_JUMP_RIGHT : ENEMY_VELOCITY_JUMP_LEFT;
+		flea.acceleration.y = 0.f;
+		flea.state = STATE_JUMP;
+		flags.fleaActivated = true;
+	}
+
+	if (!IsFleaCollidingAnyPlatform(flea) && flea.state != STATE_JUMP)
+	{
+		//objFlea.right = !objFlea.right;
+		flea.velocity = (flea.right) ? ENEMY_VELOCITY_FALL_RIGHT : ENEMY_VELOCITY_FALL_LEFT;
+		flea.acceleration.y = GRAVITY_ACCELERATION.y;
+		flea.state = STATE_FALL;
+	}
+
+	if (IsPlayerCollidingUpperPart(flea))
+	{
+		flea.pos = FLEA_START_POS * TILE_SIZE;
+		flea.state = STATE_WALK;
+		gameState.playerPrevState = gameState.playerState;
+		gameState.playerState = STATE_HISS;
+		gameState.lives--;
+	}
+}
+
+void FallingFlea(GameObject& flea)
+{
+	
+	if (IsFleaCollidingAnyPlatform(flea))
+	{
+		flea.velocity = { 0.f, 0.f };
+		flea.acceleration = { 0.f, 0.f };
+		flea.state = STATE_WALK;
+	}
+
+	if (IsPlayerCollidingUpperPart(flea))
+	{
+		flea.pos = FLEA_START_POS * TILE_SIZE;
+		flea.state = STATE_WALK;
+		gameState.playerPrevState = gameState.playerState;
+		gameState.playerState = STATE_HISS;
+		gameState.lives--;
+	}
+}
+
+void AttachedFlea(GameObject& flea)
+{
+	
+}
+
+void FleaJump(GameObject& flea)
+{
+	t.jumpTimer += DELTA_TIME;
+
+	flea.rotation = Play::DegToRad(-30);
+
+	(flea.velocity.y < 0) ?
+		flea.velocity += GRAVITY * FALL_MULTIPLIER * DELTA_TIME :
+		flea.velocity += GRAVITY * DELTA_TIME;
+
+	if (IsFleaCollidingAnyPlatform(flea))
+	{
+		flea.velocity = PLAYER_VELOCITY_DEFAULT;
+		flea.acceleration = PLAYER_VELOCITY_DEFAULT;
+		t.jumpTimer = 0.f;
+		flea.state = STATE_WALK;
+		flags.fleaActivated = false;
+	}
+
+	if (IsPlayerCollidingUpperPart(flea))
+	{
+		flea.pos = FLEA_START_POS * TILE_SIZE;
+		flea.state = STATE_WALK;
+		gameState.playerPrevState = gameState.playerState;
+		gameState.playerState = STATE_HISS;
+		gameState.lives--;
+	}
+
 }
 
 // jump off the ground / ladder
@@ -1647,9 +1704,9 @@ void Jump()
 	JumpCollisionControl();
 
 	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
-	coyoteTimer = 0.f;
+	t.coyoteTimer = 0.f;
 
-	(jumpTimer < 1.0f) ? jumpTimer += DELTA_TIME : jumpTimer = 0.f;
+	(t.jumpTimer < 1.0f) ? t.jumpTimer += DELTA_TIME : t.jumpTimer = 0.f;
 
 	(flags.right) ?
 		Play::SetSprite(objPlayer, "cat_jump_right", 0.05f) :
@@ -1659,7 +1716,7 @@ void Jump()
 		objPlayer.pos.x += objPlayer.velocity.x * DELTA_TIME :
 		objPlayer.pos.x -= objPlayer.velocity.x * DELTA_TIME;
 
-	(objPlayer.velocity.y < 0 && !Play::KeyDown(VK_SPACE) && jumpTimer < 0.5f) ?
+	(objPlayer.velocity.y < 0 && !Play::KeyDown(VK_SPACE) && t.jumpTimer < 0.5f) ?
 		gravityMultiplyer = LOW_JUMP_MULTIPLIER :
 		gravityMultiplyer = 1.f;
 
@@ -1675,53 +1732,26 @@ void JumpCollisionControl()
 	if (IsPlayerCollidingLadder())
 		gameState.playerState = STATE_ATTACHED;
 
-	vector <int> vPlatforms = Play::CollectGameObjectIDsByType(TYPE_PLATFORM);
-	for (int platformId : vPlatforms)
+	if (IsPlayerCollidingAnyPlatform() && t.jumpTimer > 0.3f)
 	{
-		GameObject& platform = Play::GetGameObject(platformId);
-
-		if (IsPlayerCollidingBottomPart(platform) && jumpTimer > 0.3f)
-		{
-			flags.isGrounded = true;
-			SetPlayerPos(groundedPosY);
-			gameState.playerState = STATE_GROUNDED;
-			objPlayer.velocity = PLAYER_VELOCITY_DEFAULT;
-			jumpTimer = 0.f;
-		}
-		else if (IsPlayerCollidingUpperPart(platform) && objPlayer.velocity.y < 0)
-		{
-			objPlayer.velocity.y = 0.f;
-			gameState.playerState = STATE_FALL;
-		}
+		flags.isGrounded = true;
+		SetPlayerPos(groundedPosY);
+		gameState.playerState = STATE_GROUNDED;
+		objPlayer.velocity = PLAYER_VELOCITY_DEFAULT;
+		t.jumpTimer = 0.f;
+	}
+	else if (IsPlayerCollidingAnyPlatformUpper() && objPlayer.velocity.y < 0)
+	{
+		objPlayer.velocity.y = 0.f;
+		gameState.playerState = STATE_FALL;
 	}
 
-	vector <int> vGrounds = Play::CollectGameObjectIDsByType(TYPE_GROUND);
-	for (int groundId : vGrounds)
+	if (IsPlayerCollidingWalls())
 	{
-		GameObject& ground = Play::GetGameObject(groundId);
-
-		if (IsPlayerCollidingBottomPart(ground) && jumpTimer > 0.5f)
-		{
-			flags.isGrounded = true;
-			SetPlayerPos(groundedPosY - TILE_SIZE);
-			gameState.playerState = STATE_GROUNDED;
-			objPlayer.velocity = PLAYER_VELOCITY_DEFAULT;
-			jumpTimer = 0.f;
-		}
+		objPlayer.velocity = { 0.f, 0.f };
+		gameState.playerState = STATE_FALL;
 	}
-
-	vector <int> vWalls = Play::CollectGameObjectIDsByType(TYPE_WALL);
-	for (int wallId : vWalls)
-	{
-		GameObject& wall = Play::GetGameObject(wallId);
-
-		if (IsPlayerCollidingUpperPart(wall))
-		{
-			objPlayer.velocity = { 0.f, 0.f };
-			gameState.playerState = STATE_FALL;
-		}
-	}
-
+		
 	if (IsPlayerStillCollidingLadder())
 	{
 		gameState.playerState = STATE_GROUNDED;
@@ -1741,6 +1771,9 @@ void Fall()
 	(!flags.right) ?
 		objPlayer.velocity += PLAYER_VELOCITY_FALL_RIGHT * DELTA_TIME :
 		objPlayer.velocity += PLAYER_VELOCITY_FALL_LEFT * DELTA_TIME;
+
+	if (gameState.playerPrevState == STATE_ATTACHED)
+		objPlayer.velocity.x *= -1;
 
 	if (IsPlayerCollidingAnyPlatform())
 	{
@@ -1779,49 +1812,21 @@ void Fall()
 void Hiss()
 {
 	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
+	t.hissTimer += DELTA_TIME;
 
-	if (gameState.playerPrevState == STATE_JUMP || gameState.playerPrevState == STATE_FALL || gameState.playerPrevState == STATE_ATTACHED || hissTimer > 1.2f)
+	if (gameState.playerPrevState == STATE_JUMP || gameState.playerPrevState == STATE_FALL || gameState.playerPrevState == STATE_ATTACHED || t.hissTimer > 1.2f)
 	{
-		gameState.playerState = gameState.playerPrevState;
-		hissTimer = 0.f;
+		t.hissTimer = 0.f;
+		if (gameState.playerPrevState != STATE_HISS)
+			gameState.playerState = gameState.playerPrevState;
+		else
+			gameState.playerState = STATE_GROUNDED;
 	}
 
 	(flags.right && gameState.playerState != STATE_FURBALL) ?
 		Play::SetSprite(objPlayer, "cat_hiss", 0.1f) :
 		Play::SetSprite(objPlayer, "cat_hiss_new_left", 0.1f);
-	hissTimer += DELTA_TIME;
-}
 
-// updating jump for ENEMY
-void FleaJump()
-{
-	GameObject& objEnemy = Play::GetGameObjectByType(TYPE_ENEMY);
-	
-	objEnemy.velocity += GRAVITY * DELTA_TIME;
-
-	vector <int> vPlatforms = Play::CollectGameObjectIDsByType(TYPE_PLATFORM);
-	for (int platformId : vPlatforms)
-	{
-		GameObject& platform = Play::GetGameObject(platformId);
-
-		if (IsEnemyColliding(platform))
-		{
-			objEnemy.velocity = PLAYER_VELOCITY_DEFAULT;
-			gameState.enemyState = STATE_WALK;
-		}
-	}
-
-	vector <int> vGrounds = Play::CollectGameObjectIDsByType(TYPE_GROUND);
-	for (int groundId : vGrounds)
-	{
-		GameObject& ground = Play::GetGameObject(groundId);
-
-		if (IsEnemyColliding(ground))
-		{
-			objEnemy.velocity = PLAYER_VELOCITY_DEFAULT;
-			gameState.enemyState = STATE_WALK;
-		}
-	}
 }
 
 // checks for collisions
@@ -1891,6 +1896,14 @@ bool IsPlayerCollidingAnyPlatform()
 	{
 		GameObject& platform = Play::GetGameObject(platformId);
 		if (IsPlayerCollidingBottomPart(platform))
+			return true;
+	}
+
+	vector <int> vWalls = Play::CollectGameObjectIDsByType(TYPE_WALL);
+	for (int wallId : vWalls)
+	{
+		GameObject& wall = Play::GetGameObject(wallId);
+		if (IsPlayerCollidingBottomPart(wall))
 			return true;
 	}
 
@@ -1998,6 +2011,9 @@ bool IsPlayerCollidingUpperPart(const GameObject& object)
 		case TYPE_ENEMY:
 			AABB = ENEMY_AABB;
 			break;
+		case TYPE_FLEA:
+			AABB = ENEMY_AABB;
+			break;
 	}
 
 	if (flags.right)
@@ -2065,6 +2081,19 @@ bool IsPlayerCollidingBottomPart(const GameObject& object  )
 	return false;
 }
 
+bool IsPlayerCollidingWalls()
+{
+	vector <int> vWalls = Play::CollectGameObjectIDsByType(TYPE_WALL);
+	for (int wallId : vWalls)
+	{
+		GameObject& wall = Play::GetGameObject(wallId);
+
+		if (IsPlayerCollidingUpperPart(wall))
+			return true;
+	}
+	return false;
+}
+
 bool IsPlayerColliding(const GameObject& object)
 {
 	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
@@ -2074,6 +2103,9 @@ bool IsPlayerColliding(const GameObject& object)
 	switch (object.type)
 	{
 		case TYPE_PLATFORM:
+			AABB = PLATFORM_AABB;
+			break;
+		case TYPE_WATER:
 			AABB = PLATFORM_AABB;
 			break;
 	}
@@ -2088,45 +2120,81 @@ bool IsPlayerColliding(const GameObject& object)
 	return false;
 }
 
-bool IsEnemyColliding(const GameObject& object)
+// fleas collisions with platforms
+bool IsFleaCollidingAnyPlatform(GameObject& flea)
 {
-	GameObject& objEnemy = Play::GetGameObjectByType(TYPE_ENEMY);
+	vector <int> vPlatforms = Play::CollectGameObjectIDsByType(TYPE_PLATFORM);
+	for (int platformId : vPlatforms)
+	{
+		GameObject& platform = Play::GetGameObject(platformId);
+		if (IsFleaColliding(flea, platform))
+			return true;
+	}
+
+	vector <int> vGrounds = Play::CollectGameObjectIDsByType(TYPE_GROUND);
+	for (int groundId : vGrounds)
+	{
+		GameObject& ground = Play::GetGameObject(groundId);
+		if (IsFleaColliding(flea, ground))
+			return true;
+	}
+	return false;
+}
+
+bool IsFleaColliding(GameObject& flea, const GameObject& object)
+{
+	vector <int> vFleas = Play::CollectGameObjectIDsByType(TYPE_FLEA);
 
 	Vector2D AABB = { 0.f, 0.f };
 
 	switch (object.type)
 	{
-		case TYPE_PLATFORM:
-			AABB = PLATFORM_AABB;
-			break;
-		case TYPE_GROUND:
-			AABB = GROUND_PLATFORM_AABB;
-			break;
-		case TYPE_PLAYER:
-			AABB = PLAYER_AABB_BOTTOM;
-			break;
+	case TYPE_PLATFORM:
+		AABB = PLATFORM_AABB;
+		break;
+	case TYPE_GROUND:
+		AABB = GROUND_PLATFORM_AABB;
+		break;
+	}
+
+	if (flea.pos.y - ENEMY_AABB.y < object.pos.y + AABB.y &&
+		flea.pos.y + ENEMY_AABB.y > object.pos.y - AABB.y)
+	{
+		if (flea.pos.x + ENEMY_AABB.x > object.pos.x - AABB.x &&
+			flea.pos.x - ENEMY_AABB.x < object.pos.x + AABB.x)
+		{
+			flea.platformPos = object.pos;
+			return true;
+		}
 	}
 	
-	if (objEnemy.pos.y - ENEMY_AABB.y < object.pos.y + AABB.y &&
-		objEnemy.pos.y + ENEMY_AABB.y > object.pos.y - AABB.y)
-	{
-		if (objEnemy.pos.x + ENEMY_AABB.x > object.pos.x - AABB.x &&
-			objEnemy.pos.x - ENEMY_AABB.x < object.pos.x + AABB.x)
-			return true;
-	}
 	return false;
 }
 
 // if object is out of x bounds , loop it to the other side
 void LoopObject(GameObject& object)
 {
-	if(object.pos.x < 0)
-		object.pos.x = DISPLAY_WIDTH;
-	else if (object.pos.x > DISPLAY_WIDTH)
-		object.pos.x = 0;
+	if(object.pos.x < platform1.LIMIT_LEFT * TILE_SIZE)
+		object.pos.x = platform1.LIMIT_RIGHT * TILE_SIZE;
+	else if (object.pos.x > platform1.LIMIT_RIGHT * TILE_SIZE)
+		object.pos.x = platform1.LIMIT_LEFT * TILE_SIZE;
 }
 
 // helper functions
+float DistanceFromPlayer(const GameObject& object)
+{
+	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
+
+	return sqrt(pow(objPlayer.pos.x - object.pos.x, 2) + pow(objPlayer.pos.y - object.pos.y, 2));
+}
+
+float DistanceYFromPlayer(const GameObject& object)
+{
+	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
+
+	return abs(objPlayer.pos.y - object.pos.y);
+}
+
 float DotProduct(const Vector2D& v1, const Vector2D& v2)
 {
 	Vector2D n1 = v1;
@@ -2155,8 +2223,8 @@ void Draw()
 	Play::DrawBackground();
 
 	DrawLevel();
-	DrawDebugInfo();
-	DrawGameStats();
+	//DrawDebugInfo();
+	//DrawGameStats();
 
 	Play::PresentDrawingBuffer();
 }
@@ -2209,22 +2277,26 @@ void DrawGameStats()
 void DrawDebugInfo()
 {
 	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
-	GameObject& objEnemy = Play::GetGameObjectByType(TYPE_ENEMY);
+
+	vector <int> vFleas = Play::CollectGameObjectIDsByType(TYPE_FLEA);
+	GameObject& f1 = Play::GetGameObject(vFleas[0]);
+	GameObject& f2 = Play::GetGameObject(vFleas[1]);
 
 	Play::SetDrawingSpace(Play::SCREEN);
 
-	Play::DrawFontText("64px", "Cat state: " + std::to_string(gameState.playerState), { DISPLAY_WIDTH - 150, 50 }, Play::CENTRE);
-	Play::DrawFontText("64px", "floor: " + std::to_string(gameState.floor), { DISPLAY_WIDTH - 150, 100 }, Play::CENTRE);
-	Play::DrawFontText("64px", "idle timer: " + std::to_string(t.idleTimer), { DISPLAY_WIDTH - 150, 150 }, Play::CENTRE);
-	Play::DrawFontText("64px", "hairball Timer: " + std::to_string(t.lickTimer), { DISPLAY_WIDTH - 150, 200 }, Play::CENTRE);
-	Play::DrawFontText("64px", "animation: " + std::to_string(flags.AnimationChanged), { DISPLAY_WIDTH - 150, 250 }, Play::CENTRE);
+	Play::DrawFontText("64px", "flea1: " + std::to_string(f1.acceleration.y), { DISPLAY_WIDTH - 10, 50 }, Play::RIGHT);
+	Play::DrawFontText("64px", "flea2: " + std::to_string(f2.acceleration.y), { DISPLAY_WIDTH - 10, 100 }, Play::RIGHT);
+
+	Play::DrawFontText("64px", "flea1 state: " + std::to_string(f1.state), { DISPLAY_WIDTH - 10, 150 }, Play::RIGHT);
+	Play::DrawFontText("64px", "flea2 state: " + std::to_string(f2.state), { DISPLAY_WIDTH -10 , 200 }, Play::RIGHT);
+	Play::DrawFontText("64px", "flea1 vy: " + std::to_string(f1.velocity.y), { DISPLAY_WIDTH - 10, 250 }, Play::RIGHT);
 
 	//Play::DrawFontText("105px", "Score: " + std::to_string(gameState.score), { DISPLAY_WIDTH / 2 , 50 }, Play::CENTRE);
 
-	Play::DrawFontText("64px", "treats: " + std::to_string(gameState.treats), { DISPLAY_WIDTH - 150, 300 }, Play::CENTRE);
-	Play::DrawFontText("64px", "grounded " + std::to_string(flags.isGrounded ), { DISPLAY_WIDTH - 150, 350 }, Play::CENTRE);
-	//Play::DrawFontText("64px", "furballTimer" + std::to_string(furballTimer), { DISPLAY_WIDTH - 150, 400 }, Play::CENTRE);
-	//Play::DrawFontText("64px", "Flea vy : " + std::to_string(objEnemy.velocity.y), { 50, 150 }, Play::CENTRE);
+	Play::DrawFontText("64px", "flea2 vy: " + std::to_string(f2.velocity.y), { DISPLAY_WIDTH - 10, 300 }, Play::RIGHT);
+	//Play::DrawFontText("64px", "grounded: " + std::to_string(flags.isGrounded ), { DISPLAY_WIDTH- 10, 350 }, Play::RIGHT);
+	Play::DrawFontText("64px", "Flea1 vx: " + std::to_string(f1.velocity.x), { DISPLAY_WIDTH - 10, 400 }, Play::RIGHT);
+	Play::DrawFontText("64px", "Flea2 vx: " + std::to_string(f2.velocity.x), { DISPLAY_WIDTH - 10, 450 }, Play::RIGHT);
 
 	Play::SetDrawingSpace(Play::WORLD);
 }
@@ -2263,6 +2335,13 @@ void DrawLevel()
 		//Play::DrawRect(Point2D{ ladder.pos.x - PLATFORM_AABB.x, ladder.pos.y - PLATFORM_AABB.y }, Point2D{ ladder.pos.x + PLATFORM_AABB.x, ladder.pos.y + PLATFORM_AABB.y }, Play::cWhite);
 	}
 
+	vector <int> vWater = Play::CollectGameObjectIDsByType(TYPE_WATER);
+	for (int waterId : vWater)
+	{
+		GameObject& water = Play::GetGameObject(waterId);
+		Play::DrawObjectRotated(water);
+	}
+
 	vector <int> vGrounds = Play::CollectGameObjectIDsByType(TYPE_GROUND);
 	for (int groundId : vGrounds)
 	{
@@ -2285,24 +2364,13 @@ void DrawLevel()
 		Play::DrawObjectRotated(tree);
 	}
 
-	vector <int> vWater = Play::CollectGameObjectIDsByType(TYPE_WATER);
-
-	for (int waterId : vWater)
-	{
-		GameObject& water = Play::GetGameObject(waterId);
-		Play::DrawObjectRotated(water);
-	}
-
 	vector <int> vFleas = Play::CollectGameObjectIDsByType(TYPE_FLEA);
 	for (int fleaId : vFleas)
 	{
 		GameObject& flea = Play::GetGameObject(fleaId);
 		Play::DrawObjectRotated(flea);
+		//Play::DrawRect(Point2D{ flea.pos.x - ENEMY_AABB.x, flea.pos.y - ENEMY_AABB.y }, Point2D{ flea.pos.x + ENEMY_AABB.x, flea.pos.y + ENEMY_AABB.y }, Play::cWhite);
 	}
-
-	GameObject& objEnemy = Play::GetGameObjectByType(TYPE_ENEMY);
-	Play::DrawObjectRotated(objEnemy);
-	Play::DrawRect(Point2D{ objEnemy.pos.x - ENEMY_AABB.x, objEnemy.pos.y - ENEMY_AABB.y }, Point2D{ objEnemy.pos.x + ENEMY_AABB.x, objEnemy.pos.y + ENEMY_AABB.y }, Play::cWhite);
 
 	vector <int> vBoxes = Play::CollectGameObjectIDsByType(TYPE_BOX);
 	for (int boxId : vBoxes)
@@ -2330,7 +2398,7 @@ void DrawLevel()
 	{
 		GameObject& objFly = Play::GetGameObject(flyId);
 		Play::DrawObjectRotated(objFly);
-		Play::DrawRect(Point2D{ objFly.pos.x - FLY_AABB.x, objFly.pos.y - FLY_AABB.y }, Point2D{ objFly.pos.x + FLY_AABB.x, objFly.pos.y + FLY_AABB.y }, Play::cWhite);
+		//Play::DrawRect(Point2D{ objFly.pos.x - FLY_AABB.x, objFly.pos.y - FLY_AABB.y }, Point2D{ objFly.pos.x + FLY_AABB.x, objFly.pos.y + FLY_AABB.y }, Play::cWhite);
 	}
 
 	vector <int> vLFlies = Play::CollectGameObjectIDsByType(TYPE_LEFT_FLY);
@@ -2338,13 +2406,20 @@ void DrawLevel()
 	{
 		GameObject& objFly = Play::GetGameObject(flyId);
 		Play::DrawObjectRotated(objFly);
-		Play::DrawRect(Point2D{ objFly.pos.x - FLY_AABB.x, objFly.pos.y - FLY_AABB.y }, Point2D{ objFly.pos.x + FLY_AABB.x, objFly.pos.y + FLY_AABB.y }, Play::cWhite);
+		//Play::DrawRect(Point2D{ objFly.pos.x - FLY_AABB.x, objFly.pos.y - FLY_AABB.y }, Point2D{ objFly.pos.x + FLY_AABB.x, objFly.pos.y + FLY_AABB.y }, Play::cWhite);
 	}
 
 	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
 	Play::DrawObjectRotated(objPlayer);
-	Play::DrawRect(Point2D{ objPlayer.pos.x - PLAYER_AABB_BOTTOM.x, objPlayer.pos.y - PLAYER_AABB_BOTTOM.y }, Point2D{ objPlayer.pos.x + PLAYER_AABB_BOTTOM.x, objPlayer.pos.y + PLAYER_AABB_BOTTOM.y }, Play::cRed);
+	//Play::DrawRect(Point2D{ objPlayer.pos.x - PLAYER_AABB_BOTTOM.x, objPlayer.pos.y - PLAYER_AABB_BOTTOM.y }, Point2D{ objPlayer.pos.x + PLAYER_AABB_BOTTOM.x, objPlayer.pos.y + PLAYER_AABB_BOTTOM.y }, Play::cRed);
 	//Play::DrawRect(Point2D{ objPlayer.pos.x, objPlayer.pos.y - PLAYER_AABB_UPPER.y }, Point2D{ objPlayer.pos.x + PLAYER_AABB_UPPER.x, objPlayer.pos.y + PLAYER_AABB_UPPER.y }, Play::cWhite);
+
+	vector <int> vStars = Play::CollectGameObjectIDsByType(TYPE_STAR);
+	for (int starId : vStars)
+	{
+		GameObject& objStar = Play::GetGameObject(starId);
+		Play::DrawObjectRotated(objStar);
+	}
 	
 }
 
@@ -2458,6 +2533,12 @@ void DestroyAllObjects()
 
 	GameObject& objEnemy = Play::GetGameObjectByType(TYPE_ENEMY);
 	objEnemy.type = TYPE_DESTROYED;
+
+	vector <int> vStars = Play::CollectGameObjectIDsByType(TYPE_STAR);
+	for (int starId : vStars)
+	{
+		Play::GetGameObject(starId).type = TYPE_DESTROYED;
+	}
 }
 
 void RestartGame()
