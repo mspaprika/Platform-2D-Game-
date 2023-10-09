@@ -17,4 +17,4 @@ My first Platformer game, currently in progress.
 
 **More Info soon...**
 
-<img src=".github/kitty_short2.gif" width="700">
+<img src=".github/jump_fleas.gif" width="700">
