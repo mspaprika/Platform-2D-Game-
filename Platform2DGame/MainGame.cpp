@@ -25,7 +25,7 @@ const int LADDER_OFFSET_X_STICK{ 16 }; // pixels
 const int LADDER_OFFSET_X_SLIDE{ 17 }; // pixels
 const int TILE_SIZE{ 38 }; // pixels
 const int POO_OFFSET_Y{ 30 }; // pixels
-const int WATER_OFFSET_Y{ 10 }; // pixels
+const int WATER_OFFSET_Y{ -17 }; // pixels
 const int TREE_OFFSET_Y{ 10 }; // pixels
 const int BUSH_OFFSET_Y{ 5 }; // pixels
 
@@ -37,6 +37,7 @@ const int TILE_WIDTH{ 34 };
 const Point2D CAMERA_THRESHOLD_X{ -15, 42 };
 const int CAMERA_THRESHOLD_Y{ 5 };
 
+// floors heights
 const int GROUND_FLOOR_HEIGHT{ 18 };
 const int SECOND_FLOOR_HEIGHT{ 14 };
 const int THIRD_FLOOR_HEIGHT{ 9 };
@@ -44,6 +45,7 @@ const int FOURTH_FLOOR_HEIGHT{ 4 };
 const int FIFTH_FLOOR_HEIGHT{ 2 };
 const int SIXTH_FLOOR_HEIGHT{ -5 };
 
+// player pos in all floors
 const Point2D PLAYER_START_POS{ -5, GROUND_FLOOR_HEIGHT - 2 };
 const int PLAYER_POS_GROUND_FLOOR{ GROUND_FLOOR_HEIGHT - 2 };
 const int PLAYER_POS_SECOND_FLOOR{ SECOND_FLOOR_HEIGHT - 3 };
@@ -59,13 +61,19 @@ const Point2D LEFT_FLY_START_POS{ 35 , THIRD_FLOOR_HEIGHT };
 
 const int FLY_SPEED{ 2 };
 
+// player velocity
 const Vector2D PLAYER_VELOCITY_DEFAULT{ 0, 0 };
 const Vector2D PLAYER_VELOCITY_WALK{ 10, 0 };
-
 const Vector2D PLAYER_VELOCITY_JUMP{ 0, -20 };
 const Vector2D PLAYER_VELOCITY_JUMP_LEFT{ -10, -20 }; 
 const Vector2D PLAYER_VELOCITY_JUMP_RIGHT{ 10, -20 };
+const Vector2D PLAYER_VELOCITY_FALL_RIGHT{ 1, 12 };
+const Vector2D PLAYER_VELOCITY_FALL_LEFT{ -1, 12 };
 
+const float FALL_MULTIPLIER{ 2.5f };
+const float LOW_JUMP_MULTIPLIER{ 3.5f };
+
+// fleas velocity
 const Vector2D ENEMY_VELOCITY_DEFAULT{ 0, 0 };
 const Vector2D ENEMY_VELOCITY_JUMP_RIGHT{ 5, -20 };
 const Vector2D ENEMY_VELOCITY_JUMP_LEFT{ -5, -20 };
@@ -74,12 +82,6 @@ const Vector2D ENEMY_VELOCITY_WALK_LEFT{ -3, 0 };
 const Vector2D ENEMY_VELOCITY_FALL_RIGHT{ 1, 5 };
 const Vector2D ENEMY_VELOCITY_FALL_LEFT{ -1, 5 };
 
-const float FALL_MULTIPLIER{ 2.5f };
-const float LOW_JUMP_MULTIPLIER{ 3.5f };
-
-const Vector2D PLAYER_VELOCITY_FALL_RIGHT{ 1, 12 };
-const Vector2D PLAYER_VELOCITY_FALL_LEFT{ -1, 12 };
-
 // all AABBs in pixels
 const Vector2D PLAYER_AABB{ 30, 45 };
 const Vector2D PLAYER_AABB_BOTTOM{ 20, 48 };
@@ -87,12 +89,12 @@ const Vector2D PLAYER_AABB_UPPER{ 35, 25 };
 const Vector2D ENEMY_AABB{ 20, 15 };
 const Vector2D FLY_AABB{ 15, 15 };
 const Vector2D TREATS_AABB{ 20, 20 };
-
 const Vector2D GROUND_PLATFORM_AABB{ 20, 60 };
 const Vector2D PLATFORM_AABB{ 20, 20 };
 const Vector2D WALL_AABB{ 60, 20 };
 const Vector2D WATER_AABB{ 20, 20 };
 
+// gravity and acceleration
 const Vector2D GRAVITY_ACCELERATION{ 0, 0.5f };
 const Vector2D GRAVITY{ 0, 22.f };
 const Vector2D FLEA_GRAVITY{ 0, 12.f };
@@ -103,6 +105,7 @@ Point2D cameraPos{ 0, 0 };
 Point2D platformPos{ 0, 0 };
 Point2D platformPosFlea{ 0, 0 };
 Point2D ladderPos{ 0, 0 };
+Point2D waterPos{ 0, 0 };
 
 float distanceFromPlayer{ 0.f };
 float gravityMultiplyer = 1.f;
@@ -119,13 +122,14 @@ enum PlayerState
 	STATE_FURBALL,
 	STATE_HISS,
 	STATE_HIDE,
+	STATE_IDLE,
 	STATE_DEAD,
+	STATE_REBORN,
 };
 
 enum GameObjectType
 {
 	TYPE_PLAYER = 0,
-	TYPE_ENEMY,
 	TYPE_FLEA,
 	TYPE_RIGHT_FLY,
 	TYPE_LEFT_FLY,
@@ -133,6 +137,7 @@ enum GameObjectType
 	TYPE_GROUND,
 	TYPE_LADDER,
 	TYPE_WATER,
+	TYPE_SPLASH,
 	TYPE_TREAT,
 	TYPE_FLOWER,
 	TYPE_STAR,
@@ -141,12 +146,15 @@ enum GameObjectType
 	TYPE_BUSH,
 	TYPE_BOX,
 	TYPE_WALL,
+	TYPE_LOBBY_CAT,
+	TYPE_LOBBY_FLEA,
 	TYPE_DESTROYED,
 };
 
 enum GameFlow
 {
 	STATE_PLAY = 0,
+	STATE_LOBBY,
 	STATE_PAUSE,
 	STATE_GAMEOVER,
 	STATE_LEVELCOMPLETE,
@@ -157,11 +165,16 @@ struct Platform
 {
 	const Vector2D WALL_OFFSET{ 20, 20 };
 	const Vector2D GROUND_FLOOR_POS{ LIMIT_LEFT, GROUND_FLOOR_HEIGHT };
+	int fleaQty{  };
 
-	Point2D playerStartPos{  };
-	Point2D fleaStartPos{  };
+	// player and enemies start / exit positions
+	Point2D playerSpawnPos{  };
+	Point2D playerRebirthPos{  };
+	Point2D playerExitPos{  };
 
-	bool isWater{ false };
+	vector <int> FLEA_SPAWN_POS_X{  };
+	vector <int> FLEA_SPAWN_POS_Y{  };
+	vector <int> FLEA_STATES{  };
 
 	// position of the top tile top edge of the ladder
 	const int LADDER_TOP_FLOOR_SECOND{ PLAYER_POS_SECOND_FLOOR + TILE_SIZE };
@@ -223,6 +236,10 @@ struct Platform
 	vector <int> WAFFLE_HEIGHT{  }; 
 	vector <int> WAFFLE_WIDTH{  };
 
+	vector <int> WATER_POS_X{  };
+	vector <int> WATER_POS_Y{  };
+	vector <int> WATER_WIDTH{  };
+
 	Point2D waterPos{  };
 	int waterLength{  };
 
@@ -259,6 +276,8 @@ struct Timers
 	float lookAroundTimer{ 0.f };
 	float lickTimer{ 0.f };
 	float hairballTimer{ 0.f };
+	float rebornTimer{ 0.f };
+	float splashTimer{ 0.f };
 };
 
 struct Flags
@@ -284,12 +303,13 @@ struct Flags
 	bool AnimationChanged{ false };
 
 	bool fleaActivated{ false };
+	bool splashed{ false };
 };
 
 struct GameState
 {
 	int score{ 0 };
-	int level{ 1 };
+	int level{ 2 };
 	int lives{ 9 };
 	int highScore{ 0 };
 	int floor{ 0 };
@@ -298,7 +318,7 @@ struct GameState
 	PlayerState playerState = STATE_GROUNDED;
 	PlayerState playerPrevState = STATE_GROUNDED;
 	PlayerState enemyState = STATE_WALK;
-	GameFlow state = STATE_PLAY;
+	GameFlow state = STATE_LOBBY;
 };
 
 Flags flags;
@@ -320,17 +340,20 @@ void Draw();
 void DrawLevel();
 void DrawGameStats();
 void DrawDebugInfo();
+void DrawLobby();
+void UpdateLobby();
 
 void CoordsPlatform1();
 
 void CreateGamePlay();
+void CreateLobby();
 void CreateObjects(Platform& platform);
 void CreatePlatform(Platform& platform);
 void BuildSideWalls(Platform& platform);
 void CreateWalls(vector <int>& w, vector <int>& h, vector <int>& x, vector <int>& y, float scale, const char* s, int TYPE);
 void CreateFloors(vector <int>& w, vector <int>& x, vector <int>& y, float scale, const char* s, int TYPE);
 void ItemsPlacement(Platform& platform);
-void PlaceWaterAndPlants(Platform& platform);
+void PlacePlants(Platform& platform);
 
 void Jump();
 void Fall();
@@ -340,7 +363,9 @@ void IdlePlayerControls();
 void AttachedPlayerControls();
 void FurballPlayerControls();
 void JumpControls();
+void Reborn();
 
+void UpdateGameStates();
 void UpdatePlayer();
 void UpdateFleas();
 void UpdateTreats();
@@ -354,6 +379,7 @@ void WalkingFlea(GameObject& flea);
 void FallingFlea(GameObject& flea);
 void FleaJump(GameObject& flea);
 void AttachedFlea(GameObject& flea);
+void FleaAI(GameObject& flea);
 
 void LookAroundControl();
 void LickControl();
@@ -393,54 +419,23 @@ void MainGameEntry( PLAY_IGNORE_COMMAND_LINE )
 	Play::CreateManager( DISPLAY_WIDTH, DISPLAY_HEIGHT, DISPLAY_SCALE );
 	Play::CentreAllSpriteOrigins();
 	Play::LoadBackground("Data//Backgrounds//forest1.png");	
-	
-	CreateGamePlay();
+	Play::LoadBackground("Data//Backgrounds//forest3.png");
+	Play::LoadBackground("Data//Backgrounds//forest2.png");
+	Play::LoadBackground("Data//Backgrounds//forest.png");
+
+	CreateLobby();
 }
 
 // Called by PlayBuffer every frame (60 times a second!)
 bool MainGameUpdate( float elapsedTime )
 {
-	switch (gameState.state)
-	{
-		case STATE_PLAY:
-		{
-			UpdatePlayer();
-			//UpdateEnemy();
-			UpdateFleas();
-			UpdateTreats();
-			UpdatePoo();
-			UpdateFlies();
-			UpdateWater();
-			UpdateStars();
-			break;
-		}
-		case STATE_PAUSE:
-		{
-			break;
-		}
-		case STATE_GAMEOVER:
-		{
-			break;
-		}
-		case STATE_LEVELCOMPLETE:
-		{
-			break;
-		}
-		case STATE_VICTORY:
-		{
-			break;
-		}
-	}
-
-	if (Play::KeyDown(VK_TAB))
-		ResetPlayer();
+	UpdateGameStates();
 
 	CameraControl();
 	WalkingDurationControl(elapsedTime);
 	AnimationDurationControl(elapsedTime);
 	UpdateDestroyed();
-	Draw();
-
+	
 	return Play::KeyDown( VK_ESCAPE );
 }
 
@@ -470,9 +465,16 @@ void CoordsPlatform1()
 	const int FLOOR_5 = p.FIFTH_FLOOR_HEIGHT;
 	const int FLOOR_6 = p.SIXTH_FLOOR_HEIGHT;
 
+	p.fleaQty = 3;
+
 	// player and enemies start position
-	p.playerStartPos = { 2, FLOOR_1 - 2 };
-	p.fleaStartPos = { -8, FLOOR_2 - 1};
+	p.playerSpawnPos = {  };
+	p.playerRebirthPos = {  };
+	p.playerExitPos = {  };
+
+	p.FLEA_SPAWN_POS_X = {  };
+	p.FLEA_SPAWN_POS_Y = {  };
+	p.FLEA_STATES = {  };
 	
 	// horizontal platforms / floors
 	p.GROUND_FLOOR_WIDTH.insert(p.GROUND_FLOOR_WIDTH.begin(), { p.LIMIT_RIGHT - p.LIMIT_LEFT });
@@ -516,9 +518,11 @@ void CoordsPlatform1()
 	p.WAFFLE_POS_Y.insert(p.WAFFLE_POS_Y.begin(), { FLOOR_4 });
 
 	// water
-	p.waterPos = { };
-	p.waterLength = {  };
+	p.WATER_POS_X.insert(p.WATER_POS_X.begin(), {  });
+	p.WATER_POS_Y.insert(p.WATER_POS_Y.begin(), {  });
+	p.WATER_WIDTH.insert(p.WATER_WIDTH.begin(), {  });
 
+	// trees and bushes
 	p.TREE_POS_X.insert(p.TREE_POS_X.begin(), { -25, 35 });
 	p.TREE_POS_Y.insert(p.TREE_POS_Y.begin(), { FLOOR_1 - 6, FLOOR_1 - 6 });
 
@@ -558,9 +562,16 @@ void CoordsPlatform2()
 	const int FLOOR_5 = p.FIFTH_FLOOR_HEIGHT;
 	const int FLOOR_6 = p.SIXTH_FLOOR_HEIGHT;
 
+	p.fleaQty = 2;
+
 	// player and enemies start position
-	p.playerStartPos = { -5, FLOOR_1 - 2 };
-	p.fleaStartPos = { -15, FLOOR_2 };
+	p.playerSpawnPos = { -5, FLOOR_1 - 2 };
+	p.playerRebirthPos = {  };
+	p.playerExitPos = {  };
+
+	p.FLEA_SPAWN_POS_X = { -5, -10 };
+	p.FLEA_SPAWN_POS_Y = { FLOOR_1, FLOOR_1 };
+	p.FLEA_STATES = { STATE_FALL, STATE_FALL };
 
 	// horizontal platforms / floors
 	p.GROUND_FLOOR_WIDTH.insert(p.GROUND_FLOOR_WIDTH.begin(), { 30, 30 });
@@ -603,9 +614,9 @@ void CoordsPlatform2()
 	p.WAFFLE_POS_X.insert(p.WAFFLE_POS_X.begin(), {  });
 	p.WAFFLE_POS_Y.insert(p.WAFFLE_POS_Y.begin(), {  });
 
-	// water
-	p.waterPos = { 0, FLOOR_1 };
-	p.waterLength = { 30 };
+	p.WATER_POS_X.insert(p.WATER_POS_X.begin(), { 0 });
+	p.WATER_POS_Y.insert(p.WATER_POS_Y.begin(), { FLOOR_1 });
+	p.WATER_WIDTH.insert(p.WATER_WIDTH.begin(), { 36 });
 
 	// cat treats
 	p.SALMON_POS_X.insert(p.SALMON_POS_X.begin(), {  });
@@ -640,9 +651,16 @@ void CoordsPlatform3()
 	const int FLOOR_5 = p.FIFTH_FLOOR_HEIGHT;
 	const int FLOOR_6 = p.SIXTH_FLOOR_HEIGHT;
 
+	p.fleaQty = 1;
+
 	// player and enemies start position
-	p.playerStartPos = { 2, FLOOR_1 - 2 };
-	p.fleaStartPos = { -8, FLOOR_2 };
+	p.playerSpawnPos = {  };
+	p.playerRebirthPos = {  };
+	p.playerExitPos = {  };
+
+	p.FLEA_SPAWN_POS_X = {  };
+	p.FLEA_SPAWN_POS_Y = {  };
+	p.FLEA_STATES = {  };
 
 	// horizontal platforms / floors
 	p.GROUND_FLOOR_WIDTH.insert(p.GROUND_FLOOR_WIDTH.begin(), {  });
@@ -685,8 +703,9 @@ void CoordsPlatform3()
 	p.WAFFLE_POS_X.insert(p.WAFFLE_POS_X.begin(), {  });
 	p.WAFFLE_POS_Y.insert(p.WAFFLE_POS_Y.begin(), {  });
 
-	// water
-	p.waterPos = {  };
+	p.WATER_POS_X.insert(p.WATER_POS_X.begin(), {  });
+	p.WATER_POS_Y.insert(p.WATER_POS_Y.begin(), {  });
+	p.WATER_WIDTH.insert(p.WATER_WIDTH.begin(), {  });
 
 	// cat treats
 	p.SALMON_POS_X.insert(p.SALMON_POS_X.begin(), {  });
@@ -730,24 +749,21 @@ void CreateGamePlay()
 // create player and enemies
 void CreateObjects(Platform& platform)
 {
-	int id = Play::CreateGameObject(TYPE_PLAYER, { platform.playerStartPos.x * TILE_SIZE, platform.playerStartPos.y * TILE_SIZE - PLAYER_OFFSET_Y }, 10, "cat_sits_right");
+	int id = Play::CreateGameObject(TYPE_PLAYER, { platform.playerSpawnPos.x * TILE_SIZE, platform.playerSpawnPos.y * TILE_SIZE - PLAYER_OFFSET_Y }, 10, "cat_sits_right");
 	GameObject& objPlayer = Play::GetGameObject(id);
 	objPlayer.velocity = PLAYER_VELOCITY_DEFAULT;
 	objPlayer.scale = 4.5f;
 
-	id = Play::CreateGameObject(TYPE_FLEA, { platform.fleaStartPos.x * TILE_SIZE - TILE_SIZE * 20, platform.fleaStartPos.y * TILE_SIZE - FLEA_OFFSET_Y}, 10, "bug_right");
-	GameObject& objEnemy = Play::GetGameObject(id);
-	objEnemy.scale = 0.5f;
-	objEnemy.rotation = Play::DegToRad(-30);
-	objEnemy.animSpeed = .05f;
-	objEnemy.velocity = ENEMY_VELOCITY_FALL_RIGHT;
-	objEnemy.state = STATE_FALL;
-
-	id = Play::CreateGameObject(TYPE_FLEA, { platform.fleaStartPos.x * TILE_SIZE, platform.fleaStartPos.y * TILE_SIZE - FLEA_OFFSET_Y }, 10, "bug_right");
-	GameObject& objFlea = Play::GetGameObject(id);
-	objFlea.velocity = ENEMY_VELOCITY_FALL_RIGHT;
-	objFlea.state = STATE_FALL;
-	objFlea.scale = 0.5f;
+	for (int i = 0; i < platform.fleaQty; i++)
+	{
+		id = Play::CreateGameObject(TYPE_FLEA, { platform.FLEA_SPAWN_POS_X[i] * TILE_SIZE, platform.FLEA_SPAWN_POS_Y[i] * TILE_SIZE - FLEA_OFFSET_Y }, 10, "bug_right");
+		GameObject& objFlea = Play::GetGameObject(id);
+		objFlea.velocity = ENEMY_VELOCITY_FALL_RIGHT;
+		objFlea.state = platform.FLEA_STATES[i];
+		objFlea.scale = 0.5f;
+		objFlea.rotation = Play::DegToRad(-30);
+		objFlea.animSpeed = .05f;
+	}
 
 	//Play::MoveSpriteOrigin("cat_go_right", 0, -3);
 	//Play::MoveSpriteOrigin("cat_go_left", 0, -3);
@@ -773,16 +789,50 @@ void CreateObjects(Platform& platform)
 	Play::MoveSpriteOrigin("cat_lick_left", 0, -2);
 	Play::MoveSpriteOrigin("cat_lick_left", 0, -2);
 
-	Play::MoveSpriteOrigin("cat_reborn_right", 0, -2);
-	Play::MoveSpriteOrigin("cat_reborn_left", 0, -2);
+	Play::MoveSpriteOrigin("cat_reborn_right", 0, 20);
+	Play::MoveSpriteOrigin("cat_reborn_left", 0, 20);
+}
 
+void CreateLobby()
+{
+	int id = Play::CreateGameObject(TYPE_LOBBY_CAT, { 390, 385 }, 10, "cat_sits_left");
+	GameObject& objPlayer = Play::GetGameObject(id);
+	objPlayer.velocity = PLAYER_VELOCITY_DEFAULT;
+	objPlayer.scale = 4.5f;
+	objPlayer.animSpeed = 0.1f;
+
+	id = Play::CreateGameObject(TYPE_LOBBY_FLEA, { 100, 400 }, 10, "bug_up");
+	GameObject& objFlea = Play::GetGameObject(id);
+	objFlea.rotation = Randomize(360, 0.1f);
+	objFlea.state = STATE_WALK;
+	objFlea.scale = 0.5f;
+	objFlea.animSpeed = 0.1f;
+	objFlea.rotSpeed = 0.005f;
+
+	id = Play::CreateGameObject(TYPE_LOBBY_FLEA, { 0, 100 }, 10, "bug_up");
+	GameObject& objFlea2 = Play::GetGameObject(id);
+	objFlea.rotation = Randomize(360, 0.1f);
+	objFlea2.state = STATE_WALK;
+	objFlea2.scale = 0.5f;
+	objFlea2.animSpeed = 0.1f;
+	objFlea2.rotSpeed = 0.005f;
+
+	id = Play::CreateGameObject(TYPE_LOBBY_FLEA, { -100, 800 }, 10, "bug_up");
+	GameObject& objFlea3 = Play::GetGameObject(id);
+	objFlea3.rotation = Randomize(360, 0.1f);
+	objFlea3.state = STATE_WALK;
+	objFlea3.scale = 0.5f;
+	objFlea3.animSpeed = 0.1f;
+	objFlea3.rotSpeed = 0.005f;
 }
 
 // create the platform for a game level
 void CreatePlatform(Platform& platform)
 {
 	BuildSideWalls(platform);
-	PlaceWaterAndPlants(platform);
+	PlacePlants(platform);
+
+	CreateFloors(platform.WATER_WIDTH, platform.WATER_POS_X, platform.WATER_POS_Y, 7.0f, "water_long", TYPE_WATER);
 
 	CreateFloors(platform.GROUND_FLOOR_WIDTH, platform.GROUND_FLOOR_POS_X, platform.GROUND_FLOOR_POS_Y, 2.5f, "the_ground", TYPE_GROUND);
 
@@ -826,13 +876,23 @@ void CreateFloors(vector <int>& w, vector <int>& x, vector <int>& y, float scale
 {
 	int j = 0;
 
+	int offset = (TYPE == TYPE_WATER) ? WATER_OFFSET_Y : FLOOR_OFFSET;
+
+
 	for (int width : w)
 	{
 		for (int i = 0; i < w[j]; i++)
 		{
 			int id = Play::CreateGameObject( TYPE,
-				Point2D{ ( x[j] * TILE_SIZE) + (TILE_SIZE * i), y[j] * TILE_SIZE + FLOOR_OFFSET }, 10, s );
+				Point2D{ ( x[j] * TILE_SIZE) + (TILE_SIZE * i), y[j] * TILE_SIZE + offset }, 10, s );
 			Play::GetGameObject(id).scale = scale;
+			Play::GetGameObject(id).animSpeed = 0.1f;
+			if (TYPE == TYPE_WATER)
+			{
+				int id = Play::CreateGameObject(TYPE_PLATFORM, 
+					Point2D{ (x[j] * TILE_SIZE) + (TILE_SIZE * i), y[j] * TILE_SIZE + WATER_OFFSET_Y + TILE_SIZE }, 10, "dirrt");
+				Play::GetGameObject(id).scale = 2.5f;			
+			}
 		}
 		j++;
 	}
@@ -854,19 +914,8 @@ void BuildSideWalls(Platform& platform)
 	}
 }
 
-void PlaceWaterAndPlants(Platform& platform)
+void PlacePlants(Platform& platform)
 {
-	for (int i = 0; i < platform.waterLength; i++)
-	{
-		int id = Play::CreateGameObject(TYPE_WATER, { platform.waterPos.x * TILE_SIZE + TILE_SIZE * i, platform.waterPos.y * TILE_SIZE - 20 }, 10, "water_long");
-		GameObject& water = Play::GetGameObject(id);
-		water.scale = 7.f;
-		water.animSpeed = 0.3f;
-		id = Play::CreateGameObject(TYPE_PLATFORM, { platform.waterPos.x * TILE_SIZE + TILE_SIZE * i, platform.waterPos.y * TILE_SIZE + TILE_SIZE }, 10, "dirrt");
-		GameObject& dirt = Play::GetGameObject(id);
-		dirt.scale = 2.5f;
-	}
-
 	for (int i = 0; i < platform.TREE_POS_X.size(); i++)
 	{
 		
@@ -1026,6 +1075,55 @@ void PoopControl()
 	}
 }
 
+// update game states
+void UpdateGameStates()
+{
+	switch (gameState.state)
+	{
+		case STATE_PLAY:
+		{
+			UpdatePlayer();
+			UpdateFleas();
+			UpdateTreats();
+			UpdatePoo();
+			UpdateFlies();
+			UpdateWater();
+			UpdateStars();
+			Draw();
+			break;
+		}
+		case STATE_PAUSE:
+		{
+			break;
+		}
+		case STATE_LOBBY:
+		{
+			DrawLobby();
+			if (Play::KeyDown(VK_RETURN))
+			{
+				CreateGamePlay();
+				gameState.state = STATE_PLAY;
+			}
+			break;
+		}
+		case STATE_GAMEOVER:
+		{
+			break;
+		}
+		case STATE_LEVELCOMPLETE:
+		{
+			break;
+		}
+		case STATE_VICTORY:
+		{
+			break;
+		}
+	}
+
+	if (Play::KeyDown(VK_TAB))
+		ResetPlayer();
+}
+
 // update game characters
 void UpdatePlayer()
 {
@@ -1070,6 +1168,11 @@ void UpdatePlayer()
 			FurballPlayerControls();
 			break;
 		}
+		case STATE_REBORN:
+		{
+			Reborn();
+			break;
+		}
 	}
 
 	if (Play::KeyDown(VK_SHIFT) && !IsPlayerCollidingAnyPlatformUpper())
@@ -1094,6 +1197,11 @@ void UpdateFleas()
 			case STATE_HIDE:
 			{
 				t.fleaTimer += DELTA_TIME;
+				break;
+			}
+			case STATE_IDLE:
+			{
+				FleaAI(flea);
 				break;
 			}
 			case STATE_WALK:
@@ -1217,20 +1325,40 @@ void UpdatePoo()
 
 void UpdateWater()
 {
-	vector <int> vWater = Play::CollectGameObjectIDsByType(TYPE_WATER);
+	GameObject & objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
+	GameObject& splash = Play::GetGameObjectByType(TYPE_SPLASH);
 
+	if (t.splashTimer > 0.5f)
+	{
+		splash.type = TYPE_DESTROYED;
+		flags.splashed = false;
+		t.splashTimer = 0.f;
+	}
+
+	if (flags.splashed)
+		t.splashTimer += DELTA_TIME;
+
+	vector <int> vWater = Play::CollectGameObjectIDsByType(TYPE_WATER);
 	for (int waterId : vWater)
 	{
 		GameObject& water = Play::GetGameObject(waterId);
 
 		if (IsPlayerColliding(water))
 		{
-			ResetPlayer();
+			int id = Play::CreateGameObject(TYPE_SPLASH, { water.pos.x + 20, water.pos.y - 40 }, 10, "water_splash");
+			GameObject& splash = Play::GetGameObject(id);
+			splash.scale = 2.5f;
+			splash.animSpeed = 0.1f;
+			flags.splashed = true;
 			gameState.lives--;
+			ResetPlayer();
+
+			(gameState.lives > 0) ? gameState.playerState = STATE_REBORN : gameState.playerState = STATE_DEAD;
 		}
 
 		Play::UpdateGameObject(water);
 	}
+	Play::UpdateGameObject(splash);
 }
 
 void UpdateStars()
@@ -1581,21 +1709,14 @@ void WalkingFlea(GameObject& flea)
 
 	flea.velocity = (flea.right) ? ENEMY_VELOCITY_WALK_RIGHT : ENEMY_VELOCITY_WALK_LEFT;
 	flea.rotation = 0;
+
 	LoopObject(flea);
+	FleaAI(flea);
 
 	(flea.right) ? Play::SetSprite(flea, "bug_right", 0.05f) : Play::SetSprite(flea, "bug_left", 0.05f);
 
-	if (DistanceFromPlayer(flea) < 300 && DistanceYFromPlayer(flea) < TILE_SIZE * 2)
-	{
-		flea.velocity = (flea.right) ? ENEMY_VELOCITY_JUMP_RIGHT : ENEMY_VELOCITY_JUMP_LEFT;
-		flea.acceleration.y = 0.f;
-		flea.state = STATE_JUMP;
-		flags.fleaActivated = true;
-	}
-
 	if (!IsFleaCollidingAnyPlatform(flea) && flea.state != STATE_JUMP)
 	{
-		//objFlea.right = !objFlea.right;
 		flea.velocity = (flea.right) ? ENEMY_VELOCITY_FALL_RIGHT : ENEMY_VELOCITY_FALL_LEFT;
 		flea.acceleration.y = GRAVITY_ACCELERATION.y;
 		flea.state = STATE_FALL;
@@ -1664,6 +1785,17 @@ void FleaJump(GameObject& flea)
 		gameState.lives--;
 	}
 
+}
+
+void FleaAI(GameObject& flea)
+{
+	if (DistanceFromPlayer(flea) < 300 && DistanceYFromPlayer(flea) < TILE_SIZE * 2)
+	{
+		flea.velocity = (flea.right) ? ENEMY_VELOCITY_JUMP_RIGHT : ENEMY_VELOCITY_JUMP_LEFT;
+		flea.acceleration.y = 0.f;
+		flea.state = STATE_JUMP;
+		flags.fleaActivated = true;
+	}
 }
 
 // jump off the ground / ladder
@@ -1827,6 +1959,22 @@ void Hiss()
 		Play::SetSprite(objPlayer, "cat_hiss", 0.1f) :
 		Play::SetSprite(objPlayer, "cat_hiss_new_left", 0.1f);
 
+}
+
+void Reborn()
+{
+	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
+	t.rebornTimer += DELTA_TIME;
+
+	if (t.rebornTimer < 1.2f)
+	{
+		Play::SetSprite(objPlayer, "cat_reborn_right", 0.1f);
+	}
+	else
+	{
+		t.rebornTimer = 0.f;
+		gameState.playerState = STATE_GROUNDED;
+	}
 }
 
 // checks for collisions
@@ -2008,9 +2156,6 @@ bool IsPlayerCollidingUpperPart(const GameObject& object)
 			AABB = WALL_AABB;
 			break;
 		}
-		case TYPE_ENEMY:
-			AABB = ENEMY_AABB;
-			break;
 		case TYPE_FLEA:
 			AABB = ENEMY_AABB;
 			break;
@@ -2138,6 +2283,14 @@ bool IsFleaCollidingAnyPlatform(GameObject& flea)
 		if (IsFleaColliding(flea, ground))
 			return true;
 	}
+
+	vector <int> vWater = Play::CollectGameObjectIDsByType(TYPE_WATER);
+	for (int waterId : vWater)
+	{
+		GameObject& water = Play::GetGameObject(waterId);
+		if (IsFleaColliding(flea, water))
+			return true;
+	}
 	return false;
 }
 
@@ -2223,8 +2376,8 @@ void Draw()
 	Play::DrawBackground();
 
 	DrawLevel();
-	//DrawDebugInfo();
-	//DrawGameStats();
+	DrawDebugInfo();
+	DrawGameStats();
 
 	Play::PresentDrawingBuffer();
 }
@@ -2420,7 +2573,62 @@ void DrawLevel()
 		GameObject& objStar = Play::GetGameObject(starId);
 		Play::DrawObjectRotated(objStar);
 	}
+
+	GameObject& objSplash = Play::GetGameObjectByType(TYPE_SPLASH);
+	if (flags.splashed)
+		Play::DrawObjectRotated(objSplash);	
+}
+
+void DrawLobby()
+{
+	Play::ClearDrawingBuffer(Play::cWhite);
 	
+	Play::DrawBackground(2);
+
+	UpdateLobby();
+
+	Play::DrawFontText("105px", "Welcome to cat & fleas !", { -200, 0 }, Play::CENTRE);
+	Play::DrawFontText("64px", "Enter to Play", { -150, 150 }, Play::CENTRE);
+
+	vector <int> vLobbyFleas = Play::CollectGameObjectIDsByType(TYPE_LOBBY_FLEA);
+
+	for (int fleaId : vLobbyFleas)
+	{
+		GameObject& objFlea = Play::GetGameObject(fleaId);
+		Play::DrawObjectRotated(objFlea);
+	}
+
+	GameObject& objCat = Play::GetGameObjectByType(TYPE_LOBBY_CAT);
+	Play::UpdateGameObject(objCat);
+	Play::DrawObjectRotated(objCat);
+
+	Play::PresentDrawingBuffer();
+}
+
+void UpdateLobby()
+{
+	GameObject& objCat = Play::GetGameObjectByType(TYPE_LOBBY_CAT);
+	Play::UpdateGameObject(objCat);
+
+	vector <int> vLobbyFleas = Play::CollectGameObjectIDsByType(TYPE_LOBBY_FLEA);
+
+	for (int fleaId : vLobbyFleas)
+	{
+		GameObject& objFlea = Play::GetGameObject(fleaId);
+		objFlea.pos.x += sin(objFlea.rotation) * 2.f;
+		objFlea.pos.y -= cos(objFlea.rotation) * 2.f;
+
+		if (objFlea.pos.y > DISPLAY_HEIGHT)
+			objFlea.pos.y = -200;
+		else if (objFlea.pos.x > DISPLAY_WIDTH)
+			objFlea.pos.x = -600;
+		else if (objFlea.pos.x < -600)
+			objFlea.pos.x = DISPLAY_WIDTH;
+		else if (objFlea.pos.y < -200)
+			objFlea.pos.y = DISPLAY_HEIGHT;
+
+		Play::UpdateGameObject(objFlea);
+	}
 }
 
 // remove destroyed objects
@@ -2530,9 +2738,6 @@ void DestroyAllObjects()
 
 	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
 	objPlayer.type = TYPE_DESTROYED;
-
-	GameObject& objEnemy = Play::GetGameObjectByType(TYPE_ENEMY);
-	objEnemy.type = TYPE_DESTROYED;
 
 	vector <int> vStars = Play::CollectGameObjectIDsByType(TYPE_STAR);
 	for (int starId : vStars)
