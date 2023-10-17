@@ -1506,6 +1506,7 @@ struct GameObject
 	bool right{ true };
 	Point2D platformPos{ 0.0f, 0.0f };
 	bool activated{ false };
+	float speed{ 0.0f };
 
 	// Add your own data members here if you want to
 	PLAY_ADD_GAMEOBJECT_MEMBERS
