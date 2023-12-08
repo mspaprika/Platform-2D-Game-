@@ -6,346 +6,12 @@
 
 #include "Play.h"
 #include "Headers.h"
+#include "Variables.h"
+#include "Structs.h"
+#include "MainHeaders.h"
 
 using namespace std;
 
-constexpr int DISPLAY_WIDTH = 1280;
-constexpr int DISPLAY_HEIGHT = 720;
-constexpr int DISPLAY_SCALE = 1;
-
-const float DELTA_TIME{ 0.016f }; // seconds
-
-const int COLLISION_BOOST{ 25 }; // pixels
-
-constexpr const char* CAR_E_SPR_NAME = "spr_car_magenta";
-constexpr const char* BACKGROUND_NAME = "Data\\Backgrounds\\spr_background.png";
-constexpr const char* AUDIO_NAME = "music";
-constexpr const char* FONT_NAME = "64px";
-
-
-// offsets
-const int CAMERA_OFFSET_X{ 600 }; // pixels
-const int PLAYER_OFFSET_Y{ 8 }; // pixels
-const int FLEA_OFFSET_Y{ 18 }; // pixels
-const int FLEA_OFFSET_Y_GROUND{ 60 }; // pixels
-const int BOX_OFFSET_Y{ 20 }; // pixels
-const int WALL_OFFSET{ 20 }; // pixels
-const int FLOOR_OFFSET{ 18 }; // pixels
-const int LADDER_OFFSET_Y{ 30 }; // pixels
-const int LADDER_OFFSET_X_STICK{ 16 }; // pixels
-const int LADDER_OFFSET_X_SLIDE{ 17 }; // pixels
-const int TILE_SIZE{ 38 }; // pixels
-const int POO_OFFSET_Y{ 30 }; // pixels
-const int WATER_OFFSET_Y{ -17 }; // pixels
-const int TREE_OFFSET_Y{ 10 }; // pixels
-const int BUSH_OFFSET_Y{ 5 }; // pixels
-
-// other measurments are in tiles
-// width and height in tiles, rounded to the bigger side so all screen is covered
-const int TILE_HEIGHT{ 19 };
-const int TILE_WIDTH{ 34 };
-
-const Point2D CAMERA_THRESHOLD_X{ -15, 42 };
-const int CAMERA_THRESHOLD_Y{ 5 };
-
-// floors heights
-const int GROUND_FLOOR_HEIGHT{ 18 };
-const int SECOND_FLOOR_HEIGHT{ 14 };
-const int THIRD_FLOOR_HEIGHT{ 9 };
-const int FOURTH_FLOOR_HEIGHT{ 4 };
-const int FIFTH_FLOOR_HEIGHT{ 2 };
-const int SIXTH_FLOOR_HEIGHT{ -5 };
-
-// player pos in all floors
-const Point2D PLAYER_START_POS{ -5, GROUND_FLOOR_HEIGHT - 2 };
-const int PLAYER_POS_GROUND_FLOOR{ GROUND_FLOOR_HEIGHT - 2 };
-const int PLAYER_POS_SECOND_FLOOR{ SECOND_FLOOR_HEIGHT - 3 };
-const int PLAYER_POS_THIRD_FLOOR{ THIRD_FLOOR_HEIGHT - 3 };
-const int PLAYER_POS_FOURTH_FLOOR{ FOURTH_FLOOR_HEIGHT - 3 };
-const int PLAYER_POS_FIFTH_FLOOR{ FIFTH_FLOOR_HEIGHT - 3 };
-const int PLAYER_POS_SIXTH_FLOOR{ SIXTH_FLOOR_HEIGHT - 3 };
-
-const Point2D ENEMY_START_POS{ -8, SECOND_FLOOR_HEIGHT - 3 };
-const Point2D FLEA_START_POS{ 5, THIRD_FLOOR_HEIGHT - 3 };
-const Point2D RIGHT_FLY_START_POS{ -35 , THIRD_FLOOR_HEIGHT };
-const Point2D LEFT_FLY_START_POS{ 65 , THIRD_FLOOR_HEIGHT };
-
-const int FLY_SPEED{ 2 };
-
-// player velocity
-const float PLAYER_VELOCITY_Y{ -15.f };
-const Vector2D PLAYER_VELOCITY_DEFAULT{ 0.f, 0.f };
-const Vector2D PLAYER_VELOCITY_WALK{ 10.f, 0.f };
-const Vector2D PLAYER_VELOCITY_JUMP{ 0.f, PLAYER_VELOCITY_Y };
-const Vector2D PLAYER_VELOCITY_JUMP_LEFT{ -8.f, PLAYER_VELOCITY_Y };
-const Vector2D PLAYER_VELOCITY_JUMP_RIGHT{ 8.f, PLAYER_VELOCITY_Y };
-const Vector2D PLAYER_VELOCITY_FALL_RIGHT{ 1.f, 12.f };
-const Vector2D PLAYER_VELOCITY_FALL_LEFT{ -1.f, 12.f };
-
-const float FALL_MULTIPLIER{ 2.5f };
-const float LOW_JUMP_MULTIPLIER{ 3.5f };
-
-// fleas velocity
-const Vector2D ENEMY_VELOCITY_DEFAULT{ 0, 0 };
-const Vector2D ENEMY_VELOCITY_JUMP_RIGHT{ 5, -20 };
-const Vector2D ENEMY_VELOCITY_JUMP_LEFT{ -5, -20 };
-const Vector2D ENEMY_VELOCITY_WALK_RIGHT{ 3, 0 };
-const Vector2D ENEMY_VELOCITY_WALK_LEFT{ -3, 0 };
-const Vector2D ENEMY_VELOCITY_FALL_RIGHT{ 1, 5 };
-const Vector2D ENEMY_VELOCITY_FALL_LEFT{ -1, 5 };
-
-// all AABBs in pixels
-const Vector2D PLAYER_AABB{ 30, 45 };
-const Vector2D PLAYER_AABB_BOTTOM{ 20, 48 };
-const Vector2D PLAYER_AABB_UPPER{ 35, 25 };
-const Vector2D ENEMY_AABB{ 20, 15 };
-const Vector2D FLY_AABB{ 15, 15 };
-const Vector2D TREATS_AABB{ 20, 20 };
-const Vector2D GROUND_PLATFORM_AABB{ 20, 60 };
-const Vector2D PLATFORM_AABB{ 20, 20 };
-const Vector2D WALL_AABB{ 60, 20 };
-const Vector2D WATER_AABB{ 20, 20 };
-
-// gravity and acceleration
-const Vector2D GRAVITY_ACCELERATION{ 0, 0.6f };
-const Vector2D GRAVITY{ 0, 22.f };
-const Vector2D FLEA_GRAVITY{ 0, 12.f };
-const Vector2D ACCELERATION{ 0, 0.3f };
-const Vector2D FRICTION{ 0.5f, 0.5f };
-
-Point2D cameraPos{ 0, 0 };
-Point2D platformPos{ 0, 0 };
-Point2D platformPosFlea{ 0, 0 };
-Point2D ladderPos{ 0, 0 };
-Point2D waterPos{ 0, 0 };
-
-Point2D oldCameraPos{ 0, 0 };
-
-float distanceFromPlayer{ 0.f };
-float gravityMultiplyer = 1.f;
-int ladderOffsetX = LADDER_OFFSET_X_STICK;
-int groundedPosY = 0;
-
-const int LOBBY_FLEA_COUNT{ 7 };
-
-enum PlayerState
-{
-	STATE_GROUNDED = 0,
-	STATE_WALK,
-	STATE_JUMP,
-	STATE_FALL,
-	STATE_ATTACHED,
-	STATE_FURBALL,
-	STATE_HISS,
-	STATE_HIDE,
-	STATE_IDLE,
-	STATE_DEAD,
-	STATE_REBORN,
-};
-
-enum GameObjectType
-{
-	TYPE_PLAYER = 0,
-	TYPE_FLEA,
-	TYPE_RIGHT_FLY,
-	TYPE_LEFT_FLY,
-	TYPE_PLATFORM,
-	TYPE_GROUND,
-	TYPE_LADDER,
-	TYPE_WATER,
-	TYPE_SPLASH,
-	TYPE_TREAT,
-	TYPE_FLOWER,
-	TYPE_STAR,
-	TYPE_POO,
-	TYPE_TREE,
-	TYPE_BUSH,
-	TYPE_BOX,
-	TYPE_WALL,
-	TYPE_LOBBY_CAT,
-	TYPE_LOBBY_FLEA,
-	TYPE_DESTROYED,
-	TYPE_CAR,
-	TOTAL_TYPES
-};
-
-enum GameFlow
-{
-	STATE_PLAY = 0,
-	STATE_LOBBY,
-	STATE_PAUSE,
-	STATE_GAMEOVER,
-	STATE_LEVELCOMPLETE,
-	STATE_VICTORY,
-};
-
-struct Platform
-{
-	const Vector2D WALL_OFFSET{ 20, 20 };
-	const Vector2D GROUND_FLOOR_POS{ LIMIT_LEFT, GROUND_FLOOR_HEIGHT };
-	int fleaQty{  };
-
-	// player and enemies start / exit positions
-	Point2D playerSpawnPos{  };
-	Point2D playerRebirthPos{  };
-	Point2D playerExitPos{  };
-
-	vector <int> FLEA_SPAWN_POS_X{  };
-	vector <int> FLEA_SPAWN_POS_Y{  };
-	vector <int> FLEA_STATES{  };
-
-	// position of the top tile top edge of the ladder
-	const int LADDER_TOP_FLOOR_SECOND{ PLAYER_POS_SECOND_FLOOR + TILE_SIZE };
-	const int LADDER_TOP_FLOOR_THIRD{ PLAYER_POS_THIRD_FLOOR + TILE_SIZE };
-	const int LADDER_TOP_FLOOR_FOURTH{ PLAYER_POS_FOURTH_FLOOR + TILE_SIZE };
-	const int LADDER_TOP_FLOOR_FIFTH{ PLAYER_POS_FIFTH_FLOOR + TILE_SIZE };
-	const int LADDER_TOP_FLOOR_SIXTH{ PLAYER_POS_SIXTH_FLOOR + TILE_SIZE };
-
-	// limits for all platforms
-	const int LIMIT_LEFT{ -30 };
-	const int LIMIT_RIGHT{ 60 };
-	const int LIMIT_TOP{ 100 };
-
-	const int GROUND_FLOOR_HEIGHT{ 18 };
-	const int SECOND_FLOOR_HEIGHT{ 13 };
-	const int THIRD_FLOOR_HEIGHT{ 8 };
-	const int FOURTH_FLOOR_HEIGHT{ 3 };
-	const int FIFTH_FLOOR_HEIGHT{ 0 };
-	const int SIXTH_FLOOR_HEIGHT{ -4 };
-
-	// side walls at limits
-	const int LEFT_WALL_POS_X{ LIMIT_LEFT };
-	const int RIGHT_WALL_POS_X{ LIMIT_RIGHT };
-	const int WALL_HEIGHT{ LIMIT_TOP };
-
-	vector <int> GROUND_FLOOR_WIDTH{  };
-	vector <int> GROUND_FLOOR_POS_X{  };
-	vector <int> GROUND_FLOOR_POS_Y{  };
-
-	vector <int> GRASS_WIDTH{  };
-	vector <int> GRASS_FLOOR_POS_X{  };
-	vector <int> GRASS_FLOOR_POS_Y{  };
-
-	vector <int> DIRT_POS_X{  };
-	vector <int> DIRT_POS_Y{  };
-	vector <int> DIRT_HEIGHT{  };
-	vector <int> DIRT_WIDTH{  };
-
-	vector <int> NUT_WALL_POS_X{  };
-	vector <int> NUT_WALL_POS_Y{  };
-	vector <int> NUT_WALL_HEIGHT{  };
-	vector <int> NUT_WALL_WIDTH{  };
-
-	vector <int> C_FLOOR_WIDTH{  };
-	vector <int> C_FLOOR_POS_X{  };
-	vector <int> C_FLOOR_POS_Y{  };
-
-	vector <int> HEART_WALL_POS_X{  };
-	vector <int> HEART_WALL_POS_Y{  };
-	vector <int> HEART_WALL_HEIGHT{  };
-	vector <int> HEART_WALL_WIDTH{  };
-
-	vector <int> HEART_FLOOR_WIDTH{  };
-	vector <int> HEART_FLOOR_POS_X{  };
-	vector <int> HEART_FLOOR_POS_Y{  };
-
-	vector <int> WAFFLE_POS_X{ };
-	vector <int> WAFFLE_POS_Y{  };
-	vector <int> WAFFLE_HEIGHT{  };
-	vector <int> WAFFLE_WIDTH{  };
-
-	vector <int> WATER_POS_X{  };
-	vector <int> WATER_POS_Y{  };
-	vector <int> WATER_WIDTH{  };
-
-	Point2D waterPos{  };
-	int waterLength{  };
-
-	vector <int> TREE_POS_X{  };
-	vector <int> TREE_POS_Y{  };
-
-	vector <int> BUSH_POS_X{  };
-	vector <int> BUSH_POS_Y{  };
-
-	vector <int> SALMON_POS_X{  };
-	vector <int> SALMON_POS_Y{  };
-
-	vector <int> CHICKEN_POS_X{  };
-	vector <int> CHICKEN_POS_Y{  };
-
-	vector <int> FLOWER_POS_X{  };
-	vector <int> FLOWER_POS_Y{  };
-
-	vector <int> BOX_POS_X{  };
-	vector <int> BOX_POS_Y{  };
-};
-
-struct Timers
-{
-	float walkTimer{ 0.f };
-	float jumpTimer{ 0.f };
-	float animationTimer{ 0.f };
-	float coyoteTimer{ 0.f };
-	float fleaTimer{ 0.f };
-	float furballTimer{ 0.f };
-	float hissTimer{ 0.f };
-	float poopTimer{ 0.f };
-	float idleTimer{ 0.f };
-	float lookAroundTimer{ 0.f };
-	float lickTimer{ 0.f };
-	float hairballTimer{ 0.f };
-	float rebornTimer{ 0.f };
-	float splashTimer{ 0.f };
-	float boxTimer{ 0.f };
-};
-
-struct Flags
-{
-	bool playMode{ true };
-	bool paused{ false };
-	bool sound{ false };
-	bool music{ false };
-	bool levelPassed{ false };
-	bool levelInfo{ true };
-
-	bool right{ true };
-	bool fleaRight{ true };
-
-	bool jumping{ false };
-	bool isAnimating{ false };
-	bool isClimbing{ false };
-	bool isGroundFloor{ false };
-	bool collided{ false };
-	bool isGrounded{ false };
-	bool newDirection{ true };
-	bool flyActive{ false };
-	bool AnimationChanged{ false };
-
-	bool fleaActivated{ false };
-	bool splashed{ false };
-
-	bool isBox{ false };
-	bool isBoxHalf{ false };
-	bool isBoxOpen{ true };
-	bool isBoxExit{ false };
-
-	bool catActivated{ false };
-};
-
-struct GameState
-{
-	int score{ 0 };
-	int level{ 1 };
-	int lives{ 9 };
-	int highScore{ 0 };
-	int floor{ 0 };
-	int treats{ 0 };
-
-	PlayerState playerState = STATE_JUMP;
-	PlayerState playerPrevState = STATE_GROUNDED;
-	PlayerState enemyState = STATE_WALK;
-	GameFlow state = STATE_LOBBY;
-};
 
 Flags flags;
 Timers t;
@@ -357,103 +23,7 @@ Platform platform3;
 Platform platform4;
 Platform platform5;
 
-void LoadLevel();
-void CameraControl();
-void WalkingDurationControl(float time);
-void AnimationDurationControl(float time);
-void CoyoteControl();
-void SetFloor();
-void SetPlayerPos(int pos);
-void ResetPlayer();
-void SpriteOrigins();
 
-void Draw();
-void DrawLevel();
-void DrawGameStats();
-void DrawDebugInfo();
-void DrawLobby();
-void DrawObjectsOfType(int TYPE);
-void DrawRect(const GameObject& object, Vector2D AABB);
-void UpdateLobby();
-
-void CoordsPlatform1();
-void CoordsPlatform2();
-void CoordsPlatform3();
-void CoordsPlatform4();
-void CoordsPlatform5();
-
-void CreateGamePlay();
-void CreateLevel(Platform& platform);
-void CreateLobby();
-void CreateLobbyFlea();
-void CreateObjects(Platform& platform);
-void CreatePlatform(Platform& platform);
-void BuildSideWalls(Platform& platform);
-void CreateWalls(vector <int>& w, vector <int>& h, vector <int>& x, vector <int>& y, float scale, const char* s, int TYPE);
-void CreateFloors(vector <int>& w, vector <int>& x, vector <int>& y, float scale, const char* s, int TYPE);
-void ItemsPlacement(Platform& platform);
-void PlacePlants(Platform& platform);
-
-void Jump();
-void Fall();
-void Hiss();
-void WalkingPlayerControls();
-void IdlePlayerControls();
-void AttachedPlayerControls();
-void FurballPlayerControls();
-void JumpControls();
-void Reborn();
-
-void UpdateGameStates();
-void UpdatePlayer();
-void UpdateFleas();
-void UpdateTreats();
-void UpdatePoo();
-void UpdateFlies();
-void UpdateFlyByType(int TYPE, Point2D pos, int limit);
-void PoopControl();
-void UpdateWater();
-void UpdateStars();
-void UpdateBox();
-
-void WalkingFlea(GameObject& flea);
-void FallingFlea(GameObject& flea);
-void FleaJump(GameObject& flea);
-void AttachedFlea(GameObject& flea);
-void FleaAI(GameObject& flea);
-
-void LookAroundControl();
-void LickControl();
-void HairballControl();
-
-void DestroyObjectsOfType(int TYPE);
-void UpdateDestroyed();
-void LoopObject(GameObject& object);
-float DistanceFromPlayer(const GameObject& object);
-float DistanceYFromPlayer(const GameObject& object);
-
-float DotProduct(const Vector2D& v1, const Vector2D& v2);
-void Normalise(Vector2D& v);
-float Randomize(int range, float multiplier = 1.0f);
-
-bool IsPlayerColliding(const GameObject& object);
-bool IsPlayerCollidingUpperPart(const GameObject& object);
-bool IsPlayerCollidingBottomPart(const GameObject& object);
-bool IsPlayerCollidingAnyPlatform();
-bool IsPlayerCollidingAnyPlatformBoth();
-bool IsPlayerCollidingAnyPlatformUpper();
-bool IsPlayerCollidingLadder();
-bool IsPlayerStillCollidingLadder();
-bool IsPlayerOnLadder();
-bool IsPlayerCollidingWalls();
-bool IsPlayerCollidingGround();
-
-bool IsFleaCollidingAnyPlatform(GameObject& flea);
-bool IsFleaColliding(GameObject& flea, const GameObject& object);
-
-void JumpCollisionControl();
-void DestroyAllObjects();
-void RestartGame();
 
 // The entry point for a PlayBuffer program
 void MainGameEntry(PLAY_IGNORE_COMMAND_LINE)
@@ -950,8 +520,9 @@ void CreateGamePlay()
 	{
 	case 1:
 	{
-		CoordsPlatform1();
-		CreateLevel(platform1);
+		//CoordsPlatform1();
+		//CreateLevel(platform1);
+		LoadLevel();
 		break;
 	}
 	case 2:
@@ -3009,56 +2580,137 @@ void RestartGame()
 	//CreateGamePlay();
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-void LoadLevel( void )
+void LoadLevel(void)
 {
-	for( int id_obj : Play::CollectAllGameObjectIDs() )
-		Play::DestroyGameObject( id_obj );
+	for (int id_obj : Play::CollectAllGameObjectIDs())
+		Play::DestroyGameObject(id_obj);
 
 	std::ifstream levelfile;
-	levelfile.open( "Level.lev" );
+	levelfile.open("Level.lev");
 
 	std::string sType, sX, sY, sSprite, sRot;
 
-	std::getline( levelfile, sType );
+	std::getline(levelfile, sType);
 
-	while( !levelfile.eof() )
+	while (!levelfile.eof())
 	{
-		std::getline( levelfile, sType );
-		std::getline( levelfile, sX );
-		std::getline( levelfile, sY );
-		std::getline( levelfile, sSprite );
+		std::getline(levelfile, sType);
+		std::getline(levelfile, sX);
+		std::getline(levelfile, sY);
+		std::getline(levelfile, sSprite);
 
 		int id = -1;
-		
 
-		if( sType == "TYPE_CAR" )
+		// Each type is detected and loaded separately
+
+		if (sType == "TYPE_PLAYER")
 		{
-			id = Play::CreateGameObject( TYPE_CAR, { std::stof( sX ) - 30, std::stof( sY ) }, 10, CAR_E_SPR_NAME );
+			id = Play::CreateGameObject(TYPE_PLAYER, { std::stof(sX) - 30, std::stof(sY) }, 0, sSprite.c_str());
+			GameObject& objPlayer = Play::GetGameObject(id);
+			objPlayer.velocity = PLAYER_VELOCITY_JUMP_RIGHT;
+			//objPlayer.exitPos = platform.playerExitPos;
+			objPlayer.scale = PLAYER_SCALE;
+		}
+		
+		if (sType == "TYPE_FLEA")
+		{
+			id = Play::CreateGameObject(TYPE_FLEA, { std::stof(sX), std::stof(sY) }, 0, sSprite.c_str());
+			GameObject& objFlea = Play::GetGameObject(id);
+			objFlea.velocity = ENEMY_VELOCITY_FALL_RIGHT;
+			//objFlea.state = platform.FLEA_STATES[i];
+			objFlea.scale = FLEA_SCALE;
+			objFlea.rotation = Play::DegToRad(-30);
+			objFlea.animSpeed = .05f;
+		}
+
+		if (sType == "TYPE_BOX")
+		{
+			id = Play::CreateGameObject(TYPE_BOX, { std::stof(sX), std::stof(sY) }, 0, sSprite.c_str());
+			GameObject& objBox = Play::GetGameObject(id);
+			//objBox.exitPos = platform.playerExitPos;
+			objBox.scale = BOX_SCALE;
+		}
+
+		
+		if (sType == "TYPE_PLATFORM")
+		{
+			id = Play::CreateGameObject(TYPE_PLATFORM, { std::stof(sX), std::stof(sY) }, 0, sSprite.c_str());
+			Play::GetGameObject(id).scale = SCALE;
+		}
+
+		if (sType == "TYPE_GROUND")
+		{
+			id = Play::CreateGameObject(TYPE_GROUND, { std::stof(sX), std::stof(sY) }, 0, sSprite.c_str());
+			Play::GetGameObject(id).scale = SCALE;
+		}
+
+		if (sType == "TYPE_TREAT")
+		{
+			id = Play::CreateGameObject(TYPE_TREAT, { std::stof(sX), std::stof(sY) }, 0, sSprite.c_str());
+			Play::GetGameObject(id).scale = SCALE;
+		}
+
+		if (sType == "TYPE_WATER")
+		{
+			id = Play::CreateGameObject(TYPE_WATER, { std::stof(sX), std::stof(sY) }, 0, sSprite.c_str());
+			Play::GetGameObject(id).scale = WATER_SCALE;
+		}
+
+		if (sType == "TYPE_TREE")
+		{
+			id = Play::CreateGameObject(TYPE_TREE, { std::stof(sX), std::stof(sY) }, 0, sSprite.c_str());
+			Play::GetGameObject(id).scale = TREE_SCALE;
+		}
+
+		if (sType == "TYPE_BUSH")
+		{
+			id = Play::CreateGameObject(TYPE_BUSH, { std::stof(sX), std::stof(sY) }, 0, sSprite.c_str());
+			Play::GetGameObject(id).scale = SCALE;
+		}
+
+		if (sType == "TYPE_LADDER")
+		{
+			id = Play::CreateGameObject(TYPE_LADDER, { std::stof(sX), std::stof(sY) }, 0, sSprite.c_str());
+			Play::GetGameObject(id).scale = SCALE;
+		}
+
+		if (sType == "TYPE_WALL")
+		{
+			id = Play::CreateGameObject(TYPE_WALL, { std::stof(sX), std::stof(sY) }, 0, sSprite.c_str());
+			Play::GetGameObject(id).scale = SCALE;
+		}
+
+		if (sType == "TYPE_FLOWER")
+		{
+			id = Play::CreateGameObject(TYPE_FLOWER, { std::stof(sX), std::stof(sY) }, 0, sSprite.c_str());
+			Play::GetGameObject(id).scale = SCALE;
 		}
 	}
 
 	levelfile.close();
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

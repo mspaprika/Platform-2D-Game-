@@ -23,11 +23,38 @@ constexpr int CAMERA_SPEED = SNAP_PIXELS * 2;
 
 const Point2f HALF_DISPLAY{ DISPLAY_WIDTH / 2.0f, DISPLAY_HEIGHT / 2.0f };
 
-constexpr const char* CAR_A_SPR_NAME = "spr_car_red";
-constexpr const char* CAR_B_SPR_NAME = "spr_car_yellow";
-constexpr const char* CAR_C_SPR_NAME = "spr_car_cyan";
-constexpr const char* CAR_D_SPR_NAME = "spr_car_green";
-constexpr const char* CAR_E_SPR_NAME = "spr_car_magenta";
+constexpr const char* SPR_PLAYER = "cat_sits_right";
+constexpr const char* SPR_BOX = "le_2Dbox";
+constexpr const char* SPR_FLEA = "bug_right";
+constexpr const char* SPR_WATER = "water_long";
+constexpr const char* SPR_GROUND = "the_ground";
+constexpr const char* SPR_HEART = "heart_choco";
+constexpr const char* SPR_C = "c_choco";
+constexpr const char* SPR_NUTS = "choco_nuts";
+constexpr const char* SPR_WAFFLE = "waff";
+constexpr const char* SPR_LEFT_WALL = "left_side_wall";
+constexpr const char* SPR_RIGHT_WALL = "right_side_wall";
+constexpr const char* SPR_TREE = "new_tree";
+constexpr const char* SPR_BUSH= "bush";
+constexpr const char* SPR_CROISSANT = "croissant";
+constexpr const char* SPR_APPLE = "apple";
+constexpr const char* SPR_BOX_2 = "wood_box";
+constexpr const char* SPR_FLW_YELLOW = "yellow_flower";
+constexpr const char* SPR_FLW_VIOLET = "violet_flower";
+constexpr const char* SPR_FLW_WHITE = "white_flower";
+constexpr const char* SPR_FLW_PINK = "pink_flower";
+
+constexpr const float PLAYER_SCALE = 4.5f;
+constexpr const float FLEA_SCALE = 0.5f;
+constexpr const float BOX_SCALE = 3.f;
+
+constexpr const float SCALE = 2.5f;
+constexpr const float WATER_SCALE = 7.0f;
+constexpr const float TREE_SCALE = 1.5f;
+constexpr const float APPLE_SCALE = 2.f;
+
+constexpr const char* SPR_BACKGROUND = "Data//Backgrounds//forest1.png";
+
 
 // To add a new object type:
 // 1) Add the new enumeration to GameObjectType 
@@ -39,27 +66,52 @@ constexpr const char* CAR_E_SPR_NAME = "spr_car_magenta";
 enum GameObjectType
 {
 	TYPE_NOONE = -1,
-	TYPE_CAR,
+
+	TYPE_PLAYER,
+	TYPE_FLEA,
+
+	TYPE_PLATFORM,
+	TYPE_GROUND,
+	TYPE_LADDER,
+	TYPE_WATER,
+	TYPE_TREAT,
+	TYPE_FLOWER,
+	TYPE_TREE,
+	TYPE_BUSH,
+	TYPE_BOX,
+	TYPE_WALL,
+
 	TOTAL_TYPES
 };
 
 // Each line represents all the different sprites available for each type of GameObject : there can be a maximum of 9 for each type
 const char* SPRITE_NAMES[TOTAL_TYPES][9] =
 {
-	{ CAR_A_SPR_NAME, CAR_B_SPR_NAME, CAR_C_SPR_NAME, CAR_D_SPR_NAME, CAR_E_SPR_NAME, CAR_E_SPR_NAME, CAR_E_SPR_NAME, CAR_E_SPR_NAME, CAR_E_SPR_NAME },
+	{ SPR_PLAYER },
+	{ SPR_FLEA },
+	{ SPR_C, SPR_HEART, SPR_NUTS, SPR_BOX_2 },
+	{ SPR_GROUND },
+	{ SPR_WAFFLE },
+	{ SPR_WATER },
+	{ SPR_CROISSANT, SPR_APPLE },
+	{ SPR_FLW_YELLOW, SPR_FLW_VIOLET, SPR_FLW_WHITE, SPR_FLW_PINK },
+	{ SPR_TREE },
+	{ SPR_BUSH },
+	{ SPR_BOX },
+	{ SPR_LEFT_WALL, SPR_RIGHT_WALL },
 };
 
 // Each string represents BOTH the text displayed when editing a particular GameObject type AND the name of that type in the level file, so changing existing strings will break your existing level files!
 const char* EDIT_MODES[ TOTAL_TYPES ] =
 {
-	"CAR",
+	"PLAYER", "FLEA", "PLATFORM", "GROUND", "LADDER", "WATER", "TREAT", "FLOWER", "TREE", "BUSH", "BOX", "WALL",
 };
 
 // The global state structure
 struct EditorState
 {
 	int score = 0;
-	GameObjectType editMode = TYPE_CAR;
+	GameObjectType editMode = TYPE_PLAYER;
 	Point2f cameraTarget{ 0.0f, 0.0f };
 	float zoom = 1.0f;
 	int selectedObj = -1;
@@ -80,7 +132,7 @@ void DrawScene();
 void DrawGrid( int gridSize );
 void DrawUserInterface();
 bool PointInsideSpriteBounds( Point2f testPos, GameObject& obj );
-void DrawObjectsOfType( GameObjectType type );
+void DrawObjectsOfType( GameObjectType type, float SCALE );
 void SaveLevel();
 void LoadLevel();
 
@@ -90,7 +142,7 @@ void MainGameEntry( PLAY_IGNORE_COMMAND_LINE )
 {
 	Play::CreateManager( DISPLAY_WIDTH, DISPLAY_HEIGHT, DISPLAY_SCALE );
 	Play::CentreAllSpriteOrigins();
-	//Play::LoadBackground( "Data\\Backgrounds\\spr_background.png" );
+	Play::LoadBackground( SPR_BACKGROUND );
 	editorState.cameraTarget = HALF_DISPLAY;
 	//Play::ColourSprite( "64px", Play::cBlack );
 	LoadLevel();
@@ -166,7 +218,7 @@ void HandleControls( void )
 		editorState.editMode = (GameObjectType)(editorState.editMode+1);
 		
 		if( editorState.editMode == TOTAL_TYPES )
-			editorState.editMode = TYPE_CAR;
+			editorState.editMode = TYPE_PLAYER;
 
 		editorState.selectedObj = -1;
 		editorState.spriteId = -1;
@@ -218,11 +270,11 @@ void HandleControls( void )
 			{
 				switch( editorState.editMode )
 				{
-					case TYPE_CAR:
-						if( Play::CollectGameObjectIDsByType( TYPE_CAR ).size() == 0 )
-							Play::CreateGameObject( TYPE_CAR, mouseWorldSnapPos, 50, SPRITE_NAMES[static_cast<int>( TYPE_CAR )][0] );
+					case TYPE_PLAYER:
+						if( Play::CollectGameObjectIDsByType( TYPE_PLAYER ).size() == 0 )
+							Play::CreateGameObject( TYPE_PLAYER, mouseWorldSnapPos, 50, SPRITE_NAMES[static_cast<int>( TYPE_PLAYER )][0] );
 						else
-							Play::GetGameObjectByType( TYPE_CAR ).pos = mouseWorldPos;
+							Play::GetGameObjectByType( TYPE_PLAYER ).pos = mouseWorldPos;
 						break;
 					default:
 
@@ -302,7 +354,7 @@ void HandleControls( void )
 			GameObject& obj = Play::GetGameObject( id );
 			if( PointInsideSpriteBounds( mouseWorldPos, obj ) )
 			{
-				if( obj.type != TYPE_CAR )
+				if( obj.type != TYPE_PLAYER )
 					Play::DestroyGameObject( id );
 			}
 		}
@@ -311,37 +363,26 @@ void HandleControls( void )
 	Play::SetCameraPosition( ( editorState.cameraTarget * editorState.zoom ) - HALF_DISPLAY );
 }
 
-//-------------------------------------------------------------------------
-// Draw enough floor to cover the screen, but not so much it slows the game down
-void DrawVisibleFloor( int floorSpriteId )
-{
-	// We'll do this in screen space because it will hurt my brain less
-	Play::SetDrawingSpace( Play::SCREEN );
-
-	int gridWidth = Play::GetSpriteWidth( floorSpriteId );
-	int gridHeight = Play::GetSpriteWidth( floorSpriteId );
-
-	for( int y = -gridHeight; y < DISPLAY_HEIGHT + (gridHeight*2); y += gridHeight )
-	{
-		for( int x = -gridWidth; x < DISPLAY_WIDTH + (gridWidth*2); x += gridWidth )
-		{
-			int offX = x - ((int)Play::cameraPos.x % gridWidth);
-			int offY = y - ((int)Play::cameraPos.y % gridHeight);
-			Play::DrawSprite( floorSpriteId, { offX, offY }, 0 );
-		}
-	}
-
-	Play::SetDrawingSpace( Play::WORLD );
-}
-
 
 //-------------------------------------------------------------------------
 // Draw all the things in the world in the right order
 void DrawScene( void )
 {
 	Play::ClearDrawingBuffer( Play::cBlack );
-	DrawVisibleFloor( Play::GetSpriteId("grass") );
-	DrawObjectsOfType( TYPE_CAR );
+	Play::DrawBackground();
+
+	DrawObjectsOfType( TYPE_PLAYER, PLAYER_SCALE );
+	DrawObjectsOfType( TYPE_FLEA, FLEA_SCALE );
+	DrawObjectsOfType( TYPE_PLATFORM, SCALE );
+	DrawObjectsOfType( TYPE_GROUND, SCALE );
+	DrawObjectsOfType( TYPE_LADDER, SCALE);
+	DrawObjectsOfType( TYPE_WATER, WATER_SCALE );
+	DrawObjectsOfType( TYPE_TREAT, APPLE_SCALE);
+	DrawObjectsOfType( TYPE_FLOWER, SCALE);
+	DrawObjectsOfType( TYPE_TREE, TREE_SCALE );
+	DrawObjectsOfType( TYPE_BUSH, SCALE);
+	DrawObjectsOfType( TYPE_BOX, BOX_SCALE);
+	DrawObjectsOfType( TYPE_WALL, SCALE );
 
 	if( editorState.selectedObj != -1 )
 	{
@@ -370,7 +411,6 @@ void DrawScene( void )
 		std::string s = "X:" + std::to_string( (int)( obj.pos.x + 0.5f ) ) + " / Y:" + std::to_string( (int)( obj.pos.y + 0.5f ) );
 		Play::DrawDebugText( ( obj.pos - origin + Point2f( size.x / 2.0f, -10.0f / editorState.zoom ) ) * editorState.zoom, s.c_str(), Play::cWhite );
 	}
-
 }
 
 //-------------------------------------------------------------------------
@@ -418,13 +458,13 @@ void DrawUserInterface( void )
 }
 
 
-void DrawObjectsOfType( GameObjectType type )
+void DrawObjectsOfType( GameObjectType type, float SCALE )
 {
 	for( int id : Play::CollectGameObjectIDsByType( type ) )
 	{
 		GameObject& obj = Play::GetGameObject( id );
 		if( obj.spriteId != -1 )
-			Play::DrawSpriteRotated( obj.spriteId, obj.pos * editorState.zoom, 0, obj.rotation, 1.0f * editorState.zoom );
+			Play::DrawSpriteRotated( obj.spriteId, obj.pos * editorState.zoom, 0, obj.rotation, 1.0f * editorState.zoom * SCALE );
 	}
 }
 
@@ -461,8 +501,32 @@ void LoadLevel( void )
 
 		// Each type is detected and loaded separately
 
-		if( sType == "TYPE_CAR" )
-			id = Play::CreateGameObject( TYPE_CAR, { std::stof( sX ), std::stof( sY ) }, 50, sSprite.c_str() );
+		if( sType == "TYPE_PLAYER" )
+			id = Play::CreateGameObject( TYPE_PLAYER, { std::stof( sX ), std::stof( sY ) }, 50, sSprite.c_str() );
+
+		if( sType == "TYPE_FLEA" )
+			id = Play::CreateGameObject( TYPE_FLEA, { std::stof( sX ), std::stof( sY ) }, 50, sSprite.c_str() );
+
+		if( sType == "TYPE_PLATFORM" )
+			id = Play::CreateGameObject( TYPE_PLATFORM, { std::stof( sX ), std::stof( sY ) }, 50, sSprite.c_str() );
+
+		if( sType == "TYPE_GROUND" )
+			id = Play::CreateGameObject( TYPE_GROUND, { std::stof( sX ), std::stof( sY ) }, 50, sSprite.c_str() );
+
+		if( sType == "TYPE_LADDER" )
+			id = Play::CreateGameObject( TYPE_LADDER, { std::stof( sX ), std::stof( sY ) }, 50, sSprite.c_str() );
+
+		if( sType == "TYPE_WATER" ) 
+			id = Play::CreateGameObject( TYPE_WATER, { std::stof( sX ), std::stof( sY ) }, 50, sSprite.c_str() );
+
+		if( sType == "TYPE_TREAT" )
+			id = Play::CreateGameObject( TYPE_TREAT, { std::stof( sX ), std::stof( sY ) }, 50, sSprite.c_str() );
+
+		if( sType == "TYPE_FLOWER" )
+			id = Play::CreateGameObject( TYPE_FLOWER, { std::stof( sX ), std::stof( sY ) }, 50, sSprite.c_str() );
+
+		if( sType == "TYPE_TREE" )
+			id = Play::CreateGameObject( TYPE_TREE, { std::stof( sX ), std::stof( sY ) }, 50, sSprite.c_str() );
 
 	}
 

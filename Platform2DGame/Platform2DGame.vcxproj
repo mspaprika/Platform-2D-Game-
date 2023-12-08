@@ -198,6 +198,9 @@
   <ItemGroup>
     <ClInclude Include="..\Play.h" />
     <ClInclude Include="Headers.h" />
+    <ClInclude Include="MainHeaders.h" />
+    <ClInclude Include="Structs.h" />
+    <ClInclude Include="Variables.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Level.lev" />
