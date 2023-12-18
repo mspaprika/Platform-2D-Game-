@@ -43,6 +43,7 @@ constexpr const char* SPR_FLW_YELLOW = "yellow_flower";
 constexpr const char* SPR_FLW_VIOLET = "violet_flower";
 constexpr const char* SPR_FLW_WHITE = "white_flower";
 constexpr const char* SPR_FLW_PINK = "pink_flower";
+constexpr const char* SPR_EXIT = "scull";
 
 constexpr const float PLAYER_SCALE = 4.5f;
 constexpr const float FLEA_SCALE = 0.5f;
@@ -54,6 +55,9 @@ constexpr const float TREE_SCALE = 1.5f;
 constexpr const float APPLE_SCALE = 2.f;
 
 constexpr const char* SPR_BACKGROUND = "Data//Backgrounds//forest1.png";
+
+std::vector<std::string> levelList;
+int currentLevel = 0; 
 
 
 // To add a new object type:
@@ -80,6 +84,7 @@ enum GameObjectType
 	TYPE_BUSH,
 	TYPE_BOX,
 	TYPE_WALL,
+	TYPE_EXIT,
 
 	TOTAL_TYPES
 };
@@ -99,12 +104,13 @@ const char* SPRITE_NAMES[TOTAL_TYPES][9] =
 	{ SPR_BUSH },
 	{ SPR_BOX },
 	{ SPR_LEFT_WALL, SPR_RIGHT_WALL },
+	{ SPR_EXIT },
 };
 
 // Each string represents BOTH the text displayed when editing a particular GameObject type AND the name of that type in the level file, so changing existing strings will break your existing level files!
 const char* EDIT_MODES[ TOTAL_TYPES ] =
 {
-	"PLAYER", "FLEA", "PLATFORM", "GROUND", "LADDER", "WATER", "TREAT", "FLOWER", "TREE", "BUSH", "BOX", "WALL",
+	"PLAYER", "FLEA", "PLATFORM", "GROUND", "LADDER", "WATER", "TREAT", "FLOWER", "TREE", "BUSH", "BOX", "WALL", "EXIT"
 };
 
 // The global state structure
@@ -135,6 +141,7 @@ bool PointInsideSpriteBounds( Point2f testPos, GameObject& obj );
 void DrawObjectsOfType( GameObjectType type, float SCALE );
 void SaveLevel();
 void LoadLevel();
+void CreateLevelList();
 
 //-------------------------------------------------------------------------
 // The entry point for a PlayBuffer program
@@ -145,6 +152,7 @@ void MainGameEntry( PLAY_IGNORE_COMMAND_LINE )
 	Play::LoadBackground( SPR_BACKGROUND );
 	editorState.cameraTarget = HALF_DISPLAY;
 	//Play::ColourSprite( "64px", Play::cBlack );
+	CreateLevelList();
 	LoadLevel();
 }
 
@@ -212,6 +220,13 @@ void HandleControls( void )
 
 	// Mode switching
 	//-----------------------------
+
+	if (Play::KeyPressed(VK_TAB))
+	{
+		currentLevel++;
+		if (currentLevel > levelList.size()) currentLevel = 0;
+		LoadLevel();
+	}
 
 	if( Play::KeyPressed( VK_SPACE ) )
 	{
@@ -383,6 +398,7 @@ void DrawScene( void )
 	DrawObjectsOfType( TYPE_BUSH, SCALE);
 	DrawObjectsOfType( TYPE_BOX, BOX_SCALE);
 	DrawObjectsOfType( TYPE_WALL, SCALE );
+	DrawObjectsOfType( TYPE_EXIT, SCALE );
 
 	if( editorState.selectedObj != -1 )
 	{
@@ -425,6 +441,19 @@ void DrawUserInterface( void )
 	Play::DrawRect( { 0, 0 }, { DISPLAY_WIDTH, 50 }, Play::cYellow, true );
 	Play::DrawFontText( "64px", "MODE : " + sMode, { DISPLAY_WIDTH / 2, 25 }, Play::CENTRE );
 	Play::DrawFontText( "64px", std::to_string( (int)( ( editorState.zoom * 100.0f ) + 0.5f ) ) + "%", { DISPLAY_WIDTH / 6, 25 }, Play::CENTRE );
+
+	std::string levelText;
+	if (currentLevel == levelList.size())
+	{
+		levelText = "New Level";
+	}
+	else
+	{
+		levelText = levelList.at(currentLevel);
+	}
+
+	Play::DrawFontText("64px", levelText, { DISPLAY_WIDTH / 4, 25 }, Play::CENTRE);
+
 	Play::DrawFontText( "64px", std::to_string( Play::CollectGameObjectIDsByType( editorState.editMode ).size() ) + " " + sMode, { ( DISPLAY_WIDTH * 5 ) / 6, 25 }, Play::CENTRE );
 
 	Play::DrawDebugText( { 20, DISPLAY_HEIGHT - 20 }, "HOLD 'H' FOR CONTROLS", Play::cBlack, false );
@@ -483,8 +512,31 @@ bool PointInsideSpriteBounds( Point2f testPos, GameObject& obj )
 // Loads the objects from the Brake Pass\Level.lev file
 void LoadLevel( void )
 {
+	//std::ifstream levelfile;
+	//levelfile.open( "Level.lev" );
+
+	for (int id : Play::CollectAllGameObjectIDs())
+	{
+		Play::DestroyGameObject(id);
+	}
+
 	std::ifstream levelfile;
-	levelfile.open( "Level.lev" );
+	std::string levelName;
+
+	if (currentLevel < levelList.size())
+	{
+		levelName = levelList.at(currentLevel);
+	}
+	else if (currentLevel == levelList.size())
+	{
+		levelName = "Level" + std::to_string(currentLevel) + ".lev";
+	}
+
+	if (std::filesystem::exists(levelName))
+	{
+		levelfile.open(levelName);
+	}
+
 
 	std::string sType, sX, sY, sSprite, sRot;
 
@@ -528,6 +580,17 @@ void LoadLevel( void )
 		if( sType == "TYPE_TREE" )
 			id = Play::CreateGameObject( TYPE_TREE, { std::stof( sX ), std::stof( sY ) }, 50, sSprite.c_str() );
 
+		if (sType == "TYPE_BOX")
+			id = Play::CreateGameObject(TYPE_BOX, { std::stof(sX), std::stof(sY) }, 50, sSprite.c_str() );
+
+		if (sType == "TYPE_WALL")
+			id = Play::CreateGameObject(TYPE_WALL, { std::stof(sX), std::stof(sY) }, 50, sSprite.c_str());
+
+		if (sType == "TYPE_BUSH")
+			id = Play::CreateGameObject(TYPE_BUSH, { std::stof(sX), std::stof(sY) }, 50, sSprite.c_str());
+
+		if (sType == "TYPE_EXIT")
+			id = Play::CreateGameObject(TYPE_EXIT, { std::stof(sX), std::stof(sY) }, 50, sSprite.c_str());
 	}
 
 	levelfile.close();
@@ -537,8 +600,26 @@ void LoadLevel( void )
 // Outputs the objects to the Brake Pass\Level.lev file
 void SaveLevel( void )
 {
+	/*std::ofstream levelfile;
+	levelfile.open( "Level.lev" );*/
+
 	std::ofstream levelfile;
-	levelfile.open( "Level.lev" );
+
+	std::string newLevelName = "Level" + std::to_string(levelList.size()) + ".lev";
+
+	std::string levelName;
+
+	if (currentLevel < levelList.size())
+	{
+		levelName = levelList.at(currentLevel);
+	}
+	else
+	{
+		levelName = newLevelName;
+		levelList.push_back(newLevelName);
+	}
+
+	levelfile.open(levelName);
 
 	levelfile << "// This file is auto-generated by the Level Editor - it's not advisable to edit it directly as changes may be overwritten!\n";
 
@@ -556,4 +637,28 @@ void SaveLevel( void )
 	levelfile.close();
 
 	editorState.saveCooldown = 100;
+}
+
+void CreateLevelList()
+{
+	int count = 0;
+	bool finished = false;
+
+	while (!finished)
+	{
+		std::string fname = "Level";
+		if (count > 0) fname += std::to_string(count);
+		fname += ".lev";
+
+		//check if level file exists
+		if (std::filesystem::exists(fname))
+		{
+			levelList.push_back(fname);
+			count++;
+		}
+		else
+		{
+			finished = true;
+		}
+	}
 }

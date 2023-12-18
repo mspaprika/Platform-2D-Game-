@@ -218,6 +218,7 @@ struct GameState
 	int highScore{ 0 };
 	int floor{ 0 };
 	int treats{ 0 };
+	Point2D exitPos{  };
 
 	PlayerState playerState = STATE_JUMP;
 	PlayerState playerPrevState = STATE_GROUNDED;
