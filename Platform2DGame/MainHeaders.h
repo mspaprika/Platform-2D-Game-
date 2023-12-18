@@ -1,6 +1,6 @@
 #pragma once
 
-
+void CreateLevelList();
 void LoadLevel();
 void CameraControl();
 void WalkingDurationControl(float time);

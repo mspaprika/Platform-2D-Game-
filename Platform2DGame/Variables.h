@@ -24,6 +24,15 @@ constexpr const float WATER_SCALE = 7.0f;
 constexpr const float TREE_SCALE = 1.5f;
 constexpr const float APPLE_SCALE = 2.f;
 
+const float BOTTOM_LINE{ 575.f }; // pixels
+
+const int FLOWER_SCORE{ 100 };
+const int TREAT_SCORE{ 50 };
+
+int rightLimit{ 0 };
+int leftLimit{ 0 };
+
+const int WALL_LIMIT_OFFSET{ 90 }; // pixels
 
 // offsets
 const int CAMERA_OFFSET_X{ 600 }; // pixels

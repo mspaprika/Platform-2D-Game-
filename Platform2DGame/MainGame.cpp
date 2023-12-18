@@ -23,6 +23,7 @@ Platform platform3;
 Platform platform4;
 Platform platform5;
 
+static std::vector<std::string> levelList;
 
 
 // The entry point for a PlayBuffer program
@@ -37,6 +38,7 @@ void MainGameEntry(PLAY_IGNORE_COMMAND_LINE)
 
 	SpriteOrigins();
 	CreateLobby();
+	CreateLevelList();
 }
 
 // Called by PlayBuffer every frame (60 times a second!)
@@ -57,534 +59,6 @@ int MainGameExit(void)
 {
 	Play::DestroyManager();
 	return PLAY_OK;
-}
-
-// insert values / coords for the platforms  
-void CoordsPlatform1()
-{
-	// 1st floor : 18
-	// 2nd floor : 13
-	// 3rd floor : 8
-	// 4th floor : 3
-	// 5th floor : 1
-	// 6th floor : -4
-
-	Platform& p = platform1;
-
-	const int FLOOR_1 = p.GROUND_FLOOR_HEIGHT;
-	const int FLOOR_2 = p.SECOND_FLOOR_HEIGHT;
-	const int FLOOR_3 = p.THIRD_FLOOR_HEIGHT;
-	const int FLOOR_4 = p.FOURTH_FLOOR_HEIGHT;
-	const int FLOOR_5 = p.FIFTH_FLOOR_HEIGHT;
-	const int FLOOR_6 = p.SIXTH_FLOOR_HEIGHT;
-
-	p.fleaQty = 3;
-
-	// player and enemies start position
-	p.playerSpawnPos = { 25, FLOOR_1 - 2 };
-	p.playerRebirthPos = {  };
-	p.playerExitPos = { -7, FLOOR_4 - 2 };
-
-	p.FLEA_SPAWN_POS_X = { -20, -5, 10 };
-	p.FLEA_SPAWN_POS_Y = { FLOOR_3, FLOOR_2, FLOOR_1 };
-	p.FLEA_STATES = { STATE_FALL, STATE_WALK, STATE_WALK };
-
-	// horizontal platforms / floors
-	p.GROUND_FLOOR_WIDTH.insert(p.GROUND_FLOOR_WIDTH.begin(), { p.LIMIT_RIGHT - p.LIMIT_LEFT });
-	p.GROUND_FLOOR_POS_X.insert(p.GROUND_FLOOR_POS_X.begin(), { p.LIMIT_LEFT });
-	p.GROUND_FLOOR_POS_Y.insert(p.GROUND_FLOOR_POS_Y.begin(), { FLOOR_1 });
-
-	p.C_FLOOR_WIDTH.insert(p.C_FLOOR_WIDTH.begin(), { 10, 11, 11, 3, 3 });
-	p.C_FLOOR_POS_X.insert(p.C_FLOOR_POS_X.begin(), { -13, 10, 10, 0, -7 });
-	p.C_FLOOR_POS_Y.insert(p.C_FLOOR_POS_Y.begin(), { FLOOR_2 - 1, FLOOR_2 - 1, FLOOR_3 - 1, FLOOR_3 - 1, FLOOR_3 - 1, });
-
-	p.HEART_FLOOR_WIDTH.insert(p.HEART_FLOOR_WIDTH.begin(), { 34 });
-	p.HEART_FLOOR_POS_X.insert(p.HEART_FLOOR_POS_X.begin(), { -13 });
-	p.HEART_FLOOR_POS_Y.insert(p.HEART_FLOOR_POS_Y.begin(), { FLOOR_4 - 1 });
-
-	// grass with dirt
-	p.GRASS_WIDTH.insert(p.GRASS_WIDTH.begin(), {  });
-	p.GRASS_FLOOR_POS_X.insert(p.GRASS_FLOOR_POS_X.begin(), { 5, 2 });
-	p.GRASS_FLOOR_POS_Y.insert(p.GRASS_FLOOR_POS_Y.begin(), { FLOOR_4, FLOOR_2 });
-
-	// vertical platforms / walls
-	p.NUT_WALL_HEIGHT.insert(p.NUT_WALL_HEIGHT.begin(), { 2, 2 });
-	p.NUT_WALL_WIDTH.insert(p.NUT_WALL_WIDTH.begin(), { 2, 2 });
-	p.NUT_WALL_POS_X.insert(p.NUT_WALL_POS_X.begin(), { -15, 21 });
-	p.NUT_WALL_POS_Y.insert(p.NUT_WALL_POS_Y.begin(), { FLOOR_2 + 3, FLOOR_2 + 3 });
-
-	p.HEART_WALL_HEIGHT.insert(p.HEART_WALL_HEIGHT.begin(), { 3, 3, 2, 2, 9, 13 });
-	p.HEART_WALL_WIDTH.insert(p.HEART_WALL_WIDTH.begin(), { 2, 2, 2, 2, 2, 2 });
-	p.HEART_WALL_POS_X.insert(p.HEART_WALL_POS_X.begin(), { -15, 21, -15, 21, -15, 21 });
-	p.HEART_WALL_POS_Y.insert(p.HEART_WALL_POS_Y.begin(), { FLOOR_2, FLOOR_2, FLOOR_3, FLOOR_3, FLOOR_6, FLOOR_6 });
-
-	// dirt blocks
-	p.DIRT_HEIGHT.insert(p.DIRT_HEIGHT.begin(), {  });
-	p.DIRT_WIDTH.insert(p.DIRT_WIDTH.begin(), { 2, 5 });
-	p.DIRT_POS_X.insert(p.DIRT_POS_X.begin(), { -1, 10 });
-	p.DIRT_POS_Y.insert(p.DIRT_POS_Y.begin(), { FLOOR_1 - 10, FLOOR_1 - 15 });
-
-	// ladders
-	p.WAFFLE_HEIGHT.insert(p.WAFFLE_HEIGHT.begin(), { 15 });
-	p.WAFFLE_WIDTH.insert(p.WAFFLE_WIDTH.begin(), { 1 });
-	p.WAFFLE_POS_X.insert(p.WAFFLE_POS_X.begin(), { 3 });
-	p.WAFFLE_POS_Y.insert(p.WAFFLE_POS_Y.begin(), { FLOOR_4 });
-
-	// water
-	p.WATER_POS_X.insert(p.WATER_POS_X.begin(), {  });
-	p.WATER_POS_Y.insert(p.WATER_POS_Y.begin(), {  });
-	p.WATER_WIDTH.insert(p.WATER_WIDTH.begin(), {  });
-
-	// trees and bushes
-	p.TREE_POS_X.insert(p.TREE_POS_X.begin(), { -20, 35 });
-	p.TREE_POS_Y.insert(p.TREE_POS_Y.begin(), { FLOOR_1 - 6, FLOOR_1 - 6 });
-
-	p.BUSH_POS_X.insert(p.BUSH_POS_X.begin(), { -10, 10, 12, 14 });
-	p.BUSH_POS_Y.insert(p.BUSH_POS_Y.begin(), { FLOOR_1 - 2, FLOOR_1 - 2, FLOOR_1 - 2, FLOOR_1 - 2 });
-
-	// cat treats
-	p.SALMON_POS_X.insert(p.SALMON_POS_X.begin(), { 43, 45, 47, 49, 51 });
-	p.SALMON_POS_Y.insert(p.SALMON_POS_Y.begin(), { FLOOR_2 , FLOOR_2 - 1, FLOOR_2 - 2, FLOOR_2 - 1, FLOOR_2 - 0 });
-
-	p.CHICKEN_POS_X.insert(p.CHICKEN_POS_X.begin(), { 6, 8, 10 });
-	p.CHICKEN_POS_Y.insert(p.CHICKEN_POS_Y.begin(), { FLOOR_2 - 2,  FLOOR_2 - 3, FLOOR_2 - 2, });
-
-	p.FLOWER_POS_X.insert(p.FLOWER_POS_X.begin(), { -12, -10, -8, -6, -4, -2, 0 });
-	p.FLOWER_POS_Y.insert(p.FLOWER_POS_Y.begin(), { FLOOR_4 - 2, FLOOR_4 - 3, FLOOR_4 - 4, FLOOR_4 - 5, FLOOR_4 - 4, FLOOR_4 - 3, FLOOR_4 - 2 });
-
-	// boxes
-	p.BOX_POS_X.insert(p.BOX_POS_X.begin(), { -9, -8, -7, -8, -7, -6 });
-	p.BOX_POS_Y.insert(p.BOX_POS_Y.begin(), { FLOOR_2 - 1, FLOOR_2 - 1, FLOOR_2 - 1, FLOOR_2 - 2, FLOOR_2 - 2, FLOOR_2 - 1, });
-}
-
-void CoordsPlatform2()
-{
-	// 1st floor : 18
-	// 2nd floor : 13
-	// 3rd floor : 8
-	// 4th floor : 3
-	// 5th floor : 1
-	// 6th floor : -4
-
-	Platform& p = platform2;
-
-	const int FLOOR_1 = p.GROUND_FLOOR_HEIGHT;
-	const int FLOOR_2 = p.SECOND_FLOOR_HEIGHT;
-	const int FLOOR_3 = p.THIRD_FLOOR_HEIGHT;
-	const int FLOOR_4 = p.FOURTH_FLOOR_HEIGHT;
-	const int FLOOR_5 = p.FIFTH_FLOOR_HEIGHT;
-	const int FLOOR_6 = p.SIXTH_FLOOR_HEIGHT;
-
-	p.fleaQty = 2;
-
-	// player and enemies start position
-	p.playerSpawnPos = { -18, FLOOR_6 };
-	p.playerRebirthPos = {  };
-	p.playerExitPos = { -20, FLOOR_2 };
-
-	p.FLEA_SPAWN_POS_X = { -25, -30 };
-	p.FLEA_SPAWN_POS_Y = { FLOOR_1, FLOOR_1 };
-	p.FLEA_STATES = { STATE_FALL, STATE_FALL };
-
-	// horizontal platforms / floors
-	p.GROUND_FLOOR_WIDTH.insert(p.GROUND_FLOOR_WIDTH.begin(), { 64 });
-	p.GROUND_FLOOR_POS_X.insert(p.GROUND_FLOOR_POS_X.begin(), { -10 });
-	p.GROUND_FLOOR_POS_Y.insert(p.GROUND_FLOOR_POS_Y.begin(), { FLOOR_1 });
-
-	p.C_FLOOR_WIDTH.insert(p.C_FLOOR_WIDTH.begin(), { 4, 4, 4, 4, 2, 2, 2, 2, 6, 6, 9, 9, });
-	p.C_FLOOR_POS_X.insert(p.C_FLOOR_POS_X.begin(), { -12, -12, -12, -12, -4, -4, -4, -4, 2, 2, -7, 10 });
-	p.C_FLOOR_POS_Y.insert(p.C_FLOOR_POS_Y.begin(), { FLOOR_1 - 22, FLOOR_1 - 21, FLOOR_1 - 14, FLOOR_1 - 13, FLOOR_1 - 22, FLOOR_1 - 21, FLOOR_1 - 16, FLOOR_1 - 15, FLOOR_1 - 22, FLOOR_1 - 21, FLOOR_1 - 34, FLOOR_1 - 30 });
-
-	p.HEART_FLOOR_WIDTH.insert(p.HEART_FLOOR_WIDTH.begin(), { 1, 1, 2, 10, 10, 5 });
-	p.HEART_FLOOR_POS_X.insert(p.HEART_FLOOR_POS_X.begin(), { 4, 7, 7, 15, 20, 10, });
-	p.HEART_FLOOR_POS_Y.insert(p.HEART_FLOOR_POS_Y.begin(), { FLOOR_1 - 32, FLOOR_1 - 32, FLOOR_1 - 34, FLOOR_1 - 10, FLOOR_1 - 15, FLOOR_1 - 20, });
-
-	// grass with dirt
-	p.GRASS_WIDTH.insert(p.GRASS_WIDTH.begin(), {  });
-	p.GRASS_FLOOR_POS_X.insert(p.GRASS_FLOOR_POS_X.begin(), {  });
-	p.GRASS_FLOOR_POS_Y.insert(p.GRASS_FLOOR_POS_Y.begin(), {  });
-
-	// vertical platforms / walls
-	p.NUT_WALL_HEIGHT.insert(p.NUT_WALL_HEIGHT.begin(), {  });
-	p.NUT_WALL_WIDTH.insert(p.NUT_WALL_WIDTH.begin(), {  });
-	p.NUT_WALL_POS_X.insert(p.NUT_WALL_POS_X.begin(), { });
-	p.NUT_WALL_POS_Y.insert(p.NUT_WALL_POS_Y.begin(), {  });
-
-	p.HEART_WALL_HEIGHT.insert(p.HEART_WALL_HEIGHT.begin(), { 8, 3, 3, 10, 10, 8, 4, 5, 5, 5, });
-	p.HEART_WALL_WIDTH.insert(p.HEART_WALL_WIDTH.begin(), { 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, });
-	p.HEART_WALL_POS_X.insert(p.HEART_WALL_POS_X.begin(), { -14, -13, -13, -5, -2, 4, 0, 4, 6, 9 });
-	p.HEART_WALL_POS_Y.insert(p.HEART_WALL_POS_Y.begin(), { FLOOR_1 - 20, FLOOR_1 - 21, FLOOR_1 - 14, FLOOR_1 - 21, FLOOR_1 - 21, FLOOR_1 - 19, FLOOR_1 - 32, FLOOR_1 - 33 , FLOOR_1 - 33 , FLOOR_1 - 33 });
-
-	// dirt blocks
-	p.DIRT_HEIGHT.insert(p.DIRT_HEIGHT.begin(), {  });
-	p.DIRT_WIDTH.insert(p.DIRT_WIDTH.begin(), {  });
-	p.DIRT_POS_X.insert(p.DIRT_POS_X.begin(), {  });
-	p.DIRT_POS_Y.insert(p.DIRT_POS_Y.begin(), {  });
-
-	// ladders
-	p.WAFFLE_HEIGHT.insert(p.WAFFLE_HEIGHT.begin(), { 6, 9, 9, 8, 10 });
-	p.WAFFLE_WIDTH.insert(p.WAFFLE_WIDTH.begin(), { 1, 1, 1, 1, 1 });
-	p.WAFFLE_POS_X.insert(p.WAFFLE_POS_X.begin(), { -15, -6, -1, 4, 14 });
-	p.WAFFLE_POS_Y.insert(p.WAFFLE_POS_Y.begin(), { FLOOR_1 - 19, FLOOR_1 - 20, FLOOR_1 - 20, FLOOR_1 - 19, FLOOR_1 - 9, });
-
-	p.WATER_POS_X.insert(p.WATER_POS_X.begin(), { p.LIMIT_LEFT });
-	p.WATER_POS_Y.insert(p.WATER_POS_Y.begin(), { FLOOR_1 });
-	p.WATER_WIDTH.insert(p.WATER_WIDTH.begin(), { 20 });
-
-	// cat treats
-	p.SALMON_POS_X.insert(p.SALMON_POS_X.begin(), { 2 });
-	p.SALMON_POS_Y.insert(p.SALMON_POS_Y.begin(), { 10 });
-
-	p.CHICKEN_POS_X.insert(p.CHICKEN_POS_X.begin(), {  });
-	p.CHICKEN_POS_Y.insert(p.CHICKEN_POS_Y.begin(), {  });
-
-	p.FLOWER_POS_X.insert(p.FLOWER_POS_X.begin(), { -5 });
-	p.FLOWER_POS_Y.insert(p.FLOWER_POS_Y.begin(), { FLOOR_1 - 2 });
-
-	// boxes
-	p.BOX_POS_X.insert(p.BOX_POS_X.begin(), { });
-	p.BOX_POS_Y.insert(p.BOX_POS_Y.begin(), {  });
-}
-
-void CoordsPlatform3()
-{
-	// 1st floor : 18
-	// 2nd floor : 13
-	// 3rd floor : 8
-	// 4th floor : 3
-	// 5th floor : 1
-	// 6th floor : -4
-
-	Platform& p = platform3;
-
-	const int FLOOR_1 = p.GROUND_FLOOR_HEIGHT;
-	const int FLOOR_2 = p.SECOND_FLOOR_HEIGHT;
-	const int FLOOR_3 = p.THIRD_FLOOR_HEIGHT;
-	const int FLOOR_4 = p.FOURTH_FLOOR_HEIGHT;
-	const int FLOOR_5 = p.FIFTH_FLOOR_HEIGHT;
-	const int FLOOR_6 = p.SIXTH_FLOOR_HEIGHT;
-
-	p.fleaQty = 1;
-
-	// player and enemies start position
-	p.playerSpawnPos = {  };
-	p.playerRebirthPos = {  };
-	p.playerExitPos = {  };
-
-	p.FLEA_SPAWN_POS_X = {  };
-	p.FLEA_SPAWN_POS_Y = {  };
-	p.FLEA_STATES = {  };
-
-	// horizontal platforms / floors
-	p.GROUND_FLOOR_WIDTH.insert(p.GROUND_FLOOR_WIDTH.begin(), {  });
-	p.GROUND_FLOOR_POS_X.insert(p.GROUND_FLOOR_POS_X.begin(), {  });
-	p.GROUND_FLOOR_POS_Y.insert(p.GROUND_FLOOR_POS_Y.begin(), {  });
-
-	p.C_FLOOR_WIDTH.insert(p.C_FLOOR_WIDTH.begin(), {  });
-	p.C_FLOOR_POS_X.insert(p.C_FLOOR_POS_X.begin(), {  });
-	p.C_FLOOR_POS_Y.insert(p.C_FLOOR_POS_Y.begin(), {  });
-
-	p.HEART_FLOOR_WIDTH.insert(p.HEART_FLOOR_WIDTH.begin(), {  });
-	p.HEART_FLOOR_POS_X.insert(p.HEART_FLOOR_POS_X.begin(), {  });
-	p.HEART_FLOOR_POS_Y.insert(p.HEART_FLOOR_POS_Y.begin(), {  });
-
-	// grass with dirt
-	p.GRASS_WIDTH.insert(p.GRASS_WIDTH.begin(), {  });
-	p.GRASS_FLOOR_POS_X.insert(p.GRASS_FLOOR_POS_X.begin(), {  });
-	p.GRASS_FLOOR_POS_Y.insert(p.GRASS_FLOOR_POS_Y.begin(), {  });
-
-	// vertical platforms / walls
-	p.NUT_WALL_HEIGHT.insert(p.NUT_WALL_HEIGHT.begin(), {  });
-	p.NUT_WALL_WIDTH.insert(p.NUT_WALL_WIDTH.begin(), {  });
-	p.NUT_WALL_POS_X.insert(p.NUT_WALL_POS_X.begin(), {  });
-	p.NUT_WALL_POS_Y.insert(p.NUT_WALL_POS_Y.begin(), {  });
-
-	p.HEART_WALL_HEIGHT.insert(p.HEART_WALL_HEIGHT.begin(), {  });
-	p.HEART_WALL_WIDTH.insert(p.HEART_WALL_WIDTH.begin(), {  });
-	p.HEART_WALL_POS_X.insert(p.HEART_WALL_POS_X.begin(), {  });
-	p.HEART_WALL_POS_Y.insert(p.HEART_WALL_POS_Y.begin(), {  });
-
-	// dirt blocks
-	p.DIRT_HEIGHT.insert(p.DIRT_HEIGHT.begin(), {  });
-	p.DIRT_WIDTH.insert(p.DIRT_WIDTH.begin(), {  });
-	p.DIRT_POS_X.insert(p.DIRT_POS_X.begin(), {  });
-	p.DIRT_POS_Y.insert(p.DIRT_POS_Y.begin(), {  });
-
-	// ladders
-	p.WAFFLE_HEIGHT.insert(p.WAFFLE_HEIGHT.begin(), {  });
-	p.WAFFLE_WIDTH.insert(p.WAFFLE_WIDTH.begin(), {  });
-	p.WAFFLE_POS_X.insert(p.WAFFLE_POS_X.begin(), {  });
-	p.WAFFLE_POS_Y.insert(p.WAFFLE_POS_Y.begin(), {  });
-
-	p.WATER_POS_X.insert(p.WATER_POS_X.begin(), {  });
-	p.WATER_POS_Y.insert(p.WATER_POS_Y.begin(), {  });
-	p.WATER_WIDTH.insert(p.WATER_WIDTH.begin(), {  });
-
-	// cat treats
-	p.SALMON_POS_X.insert(p.SALMON_POS_X.begin(), {  });
-	p.SALMON_POS_Y.insert(p.SALMON_POS_Y.begin(), {  });
-
-	p.CHICKEN_POS_X.insert(p.CHICKEN_POS_X.begin(), {  });
-	p.CHICKEN_POS_Y.insert(p.CHICKEN_POS_Y.begin(), {  });
-
-	// boxes
-	p.BOX_POS_X.insert(p.BOX_POS_X.begin(), { });
-	p.BOX_POS_Y.insert(p.BOX_POS_Y.begin(), {  });
-
-	p.FLOWER_POS_X.insert(p.FLOWER_POS_X.begin(), { 0 });
-	p.FLOWER_POS_Y.insert(p.FLOWER_POS_Y.begin(), { FLOOR_4 - 1 });
-}
-
-void CoordsPlatform4()
-{
-	// 1st floor : 18
-	// 2nd floor : 13
-	// 3rd floor : 8
-	// 4th floor : 3
-	// 5th floor : 1
-	// 6th floor : -4
-
-	Platform& p = platform4;
-
-	const int FLOOR_1 = p.GROUND_FLOOR_HEIGHT;
-	const int FLOOR_2 = p.SECOND_FLOOR_HEIGHT;
-	const int FLOOR_3 = p.THIRD_FLOOR_HEIGHT;
-	const int FLOOR_4 = p.FOURTH_FLOOR_HEIGHT;
-	const int FLOOR_5 = p.FIFTH_FLOOR_HEIGHT;
-	const int FLOOR_6 = p.SIXTH_FLOOR_HEIGHT;
-
-	p.fleaQty = 1;
-
-	// player and enemies start position
-	p.playerSpawnPos = {  };
-	p.playerRebirthPos = {  };
-	p.playerExitPos = {  };
-
-	p.FLEA_SPAWN_POS_X = {  };
-	p.FLEA_SPAWN_POS_Y = {  };
-	p.FLEA_STATES = {  };
-
-	// horizontal platforms / floors
-	p.GROUND_FLOOR_WIDTH.insert(p.GROUND_FLOOR_WIDTH.begin(), {  });
-	p.GROUND_FLOOR_POS_X.insert(p.GROUND_FLOOR_POS_X.begin(), {  });
-	p.GROUND_FLOOR_POS_Y.insert(p.GROUND_FLOOR_POS_Y.begin(), {  });
-
-	p.C_FLOOR_WIDTH.insert(p.C_FLOOR_WIDTH.begin(), {  });
-	p.C_FLOOR_POS_X.insert(p.C_FLOOR_POS_X.begin(), {  });
-	p.C_FLOOR_POS_Y.insert(p.C_FLOOR_POS_Y.begin(), {  });
-
-	p.HEART_FLOOR_WIDTH.insert(p.HEART_FLOOR_WIDTH.begin(), {  });
-	p.HEART_FLOOR_POS_X.insert(p.HEART_FLOOR_POS_X.begin(), {  });
-	p.HEART_FLOOR_POS_Y.insert(p.HEART_FLOOR_POS_Y.begin(), {  });
-
-	// grass with dirt
-	p.GRASS_WIDTH.insert(p.GRASS_WIDTH.begin(), {  });
-	p.GRASS_FLOOR_POS_X.insert(p.GRASS_FLOOR_POS_X.begin(), {  });
-	p.GRASS_FLOOR_POS_Y.insert(p.GRASS_FLOOR_POS_Y.begin(), {  });
-
-	// vertical platforms / walls
-	p.NUT_WALL_HEIGHT.insert(p.NUT_WALL_HEIGHT.begin(), {  });
-	p.NUT_WALL_WIDTH.insert(p.NUT_WALL_WIDTH.begin(), {  });
-	p.NUT_WALL_POS_X.insert(p.NUT_WALL_POS_X.begin(), {  });
-	p.NUT_WALL_POS_Y.insert(p.NUT_WALL_POS_Y.begin(), {  });
-
-	p.HEART_WALL_HEIGHT.insert(p.HEART_WALL_HEIGHT.begin(), {  });
-	p.HEART_WALL_WIDTH.insert(p.HEART_WALL_WIDTH.begin(), {  });
-	p.HEART_WALL_POS_X.insert(p.HEART_WALL_POS_X.begin(), {  });
-	p.HEART_WALL_POS_Y.insert(p.HEART_WALL_POS_Y.begin(), {  });
-
-	// dirt blocks
-	p.DIRT_HEIGHT.insert(p.DIRT_HEIGHT.begin(), {  });
-	p.DIRT_WIDTH.insert(p.DIRT_WIDTH.begin(), {  });
-	p.DIRT_POS_X.insert(p.DIRT_POS_X.begin(), {  });
-	p.DIRT_POS_Y.insert(p.DIRT_POS_Y.begin(), {  });
-
-	// ladders
-	p.WAFFLE_HEIGHT.insert(p.WAFFLE_HEIGHT.begin(), {  });
-	p.WAFFLE_WIDTH.insert(p.WAFFLE_WIDTH.begin(), {  });
-	p.WAFFLE_POS_X.insert(p.WAFFLE_POS_X.begin(), {  });
-	p.WAFFLE_POS_Y.insert(p.WAFFLE_POS_Y.begin(), {  });
-
-	p.WATER_POS_X.insert(p.WATER_POS_X.begin(), {  });
-	p.WATER_POS_Y.insert(p.WATER_POS_Y.begin(), {  });
-	p.WATER_WIDTH.insert(p.WATER_WIDTH.begin(), {  });
-
-	// cat treats
-	p.SALMON_POS_X.insert(p.SALMON_POS_X.begin(), {  });
-	p.SALMON_POS_Y.insert(p.SALMON_POS_Y.begin(), {  });
-
-	p.CHICKEN_POS_X.insert(p.CHICKEN_POS_X.begin(), {  });
-	p.CHICKEN_POS_Y.insert(p.CHICKEN_POS_Y.begin(), {  });
-
-	// boxes
-	p.BOX_POS_X.insert(p.BOX_POS_X.begin(), { });
-	p.BOX_POS_Y.insert(p.BOX_POS_Y.begin(), {  });
-
-	p.FLOWER_POS_X.insert(p.FLOWER_POS_X.begin(), { 0 });
-	p.FLOWER_POS_Y.insert(p.FLOWER_POS_Y.begin(), { FLOOR_4 - 1 });
-}
-
-void CoordsPlatform5()
-{
-	// 1st floor : 18
-	// 2nd floor : 13
-	// 3rd floor : 8
-	// 4th floor : 3
-	// 5th floor : 1
-	// 6th floor : -4
-
-	Platform& p = platform5;
-
-	const int FLOOR_1 = p.GROUND_FLOOR_HEIGHT;
-	const int FLOOR_2 = p.SECOND_FLOOR_HEIGHT;
-	const int FLOOR_3 = p.THIRD_FLOOR_HEIGHT;
-	const int FLOOR_4 = p.FOURTH_FLOOR_HEIGHT;
-	const int FLOOR_5 = p.FIFTH_FLOOR_HEIGHT;
-	const int FLOOR_6 = p.SIXTH_FLOOR_HEIGHT;
-
-	p.fleaQty = 1;
-
-	// player and enemies start position
-	p.playerSpawnPos = {  };
-	p.playerRebirthPos = {  };
-	p.playerExitPos = {  };
-
-	p.FLEA_SPAWN_POS_X = {  };
-	p.FLEA_SPAWN_POS_Y = {  };
-	p.FLEA_STATES = {  };
-
-	// horizontal platforms / floors
-	p.GROUND_FLOOR_WIDTH.insert(p.GROUND_FLOOR_WIDTH.begin(), {  });
-	p.GROUND_FLOOR_POS_X.insert(p.GROUND_FLOOR_POS_X.begin(), {  });
-	p.GROUND_FLOOR_POS_Y.insert(p.GROUND_FLOOR_POS_Y.begin(), {  });
-
-	p.C_FLOOR_WIDTH.insert(p.C_FLOOR_WIDTH.begin(), {  });
-	p.C_FLOOR_POS_X.insert(p.C_FLOOR_POS_X.begin(), {  });
-	p.C_FLOOR_POS_Y.insert(p.C_FLOOR_POS_Y.begin(), {  });
-
-	p.HEART_FLOOR_WIDTH.insert(p.HEART_FLOOR_WIDTH.begin(), {  });
-	p.HEART_FLOOR_POS_X.insert(p.HEART_FLOOR_POS_X.begin(), {  });
-	p.HEART_FLOOR_POS_Y.insert(p.HEART_FLOOR_POS_Y.begin(), {  });
-
-	// grass with dirt
-	p.GRASS_WIDTH.insert(p.GRASS_WIDTH.begin(), {  });
-	p.GRASS_FLOOR_POS_X.insert(p.GRASS_FLOOR_POS_X.begin(), {  });
-	p.GRASS_FLOOR_POS_Y.insert(p.GRASS_FLOOR_POS_Y.begin(), {  });
-
-	// vertical platforms / walls
-	p.NUT_WALL_HEIGHT.insert(p.NUT_WALL_HEIGHT.begin(), {  });
-	p.NUT_WALL_WIDTH.insert(p.NUT_WALL_WIDTH.begin(), {  });
-	p.NUT_WALL_POS_X.insert(p.NUT_WALL_POS_X.begin(), {  });
-	p.NUT_WALL_POS_Y.insert(p.NUT_WALL_POS_Y.begin(), {  });
-
-	p.HEART_WALL_HEIGHT.insert(p.HEART_WALL_HEIGHT.begin(), {  });
-	p.HEART_WALL_WIDTH.insert(p.HEART_WALL_WIDTH.begin(), {  });
-	p.HEART_WALL_POS_X.insert(p.HEART_WALL_POS_X.begin(), {  });
-	p.HEART_WALL_POS_Y.insert(p.HEART_WALL_POS_Y.begin(), {  });
-
-	// dirt blocks
-	p.DIRT_HEIGHT.insert(p.DIRT_HEIGHT.begin(), {  });
-	p.DIRT_WIDTH.insert(p.DIRT_WIDTH.begin(), {  });
-	p.DIRT_POS_X.insert(p.DIRT_POS_X.begin(), {  });
-	p.DIRT_POS_Y.insert(p.DIRT_POS_Y.begin(), {  });
-
-	// ladders
-	p.WAFFLE_HEIGHT.insert(p.WAFFLE_HEIGHT.begin(), {  });
-	p.WAFFLE_WIDTH.insert(p.WAFFLE_WIDTH.begin(), {  });
-	p.WAFFLE_POS_X.insert(p.WAFFLE_POS_X.begin(), {  });
-	p.WAFFLE_POS_Y.insert(p.WAFFLE_POS_Y.begin(), {  });
-
-	p.WATER_POS_X.insert(p.WATER_POS_X.begin(), {  });
-	p.WATER_POS_Y.insert(p.WATER_POS_Y.begin(), {  });
-	p.WATER_WIDTH.insert(p.WATER_WIDTH.begin(), {  });
-
-	// cat treats
-	p.SALMON_POS_X.insert(p.SALMON_POS_X.begin(), {  });
-	p.SALMON_POS_Y.insert(p.SALMON_POS_Y.begin(), {  });
-
-	p.CHICKEN_POS_X.insert(p.CHICKEN_POS_X.begin(), {  });
-	p.CHICKEN_POS_Y.insert(p.CHICKEN_POS_Y.begin(), {  });
-
-	// boxes
-	p.BOX_POS_X.insert(p.BOX_POS_X.begin(), { });
-	p.BOX_POS_Y.insert(p.BOX_POS_Y.begin(), {  });
-
-	p.FLOWER_POS_X.insert(p.FLOWER_POS_X.begin(), { 0 });
-	p.FLOWER_POS_Y.insert(p.FLOWER_POS_Y.begin(), { FLOOR_4 - 1 });
-}
-
-// create all the objects for a game level
-void CreateGamePlay()
-{
-	switch (gameState.level)
-	{
-	case 1:
-	{
-		//CoordsPlatform1();
-		//CreateLevel(platform1);
-		LoadLevel();
-		break;
-	}
-	case 2:
-	{
-		CoordsPlatform2();
-		CreateLevel(platform2);
-		break;
-	}
-	case 3:
-	{
-		CoordsPlatform3();
-		CreateLevel(platform3);
-		break;
-	}
-	case 4:
-	{
-		CoordsPlatform4();
-		CreateLevel(platform4);
-		break;
-	}
-	default:
-	{
-		CoordsPlatform5();
-		CreateLevel(platform5);
-		break;
-	}
-	}
-}
-
-void CreateLevel(Platform& platform)
-{
-	CreatePlatform(platform);
-	ItemsPlacement(platform);
-	CreateObjects(platform);
-}
-
-// create player and enemies
-void CreateObjects(Platform& platform)
-{
-	int id = Play::CreateGameObject(TYPE_PLAYER, { platform.playerSpawnPos.x * TILE_SIZE, platform.playerSpawnPos.y * TILE_SIZE - PLAYER_OFFSET_Y }, 10, "cat_sits_right");
-	GameObject& objPlayer = Play::GetGameObject(id);
-	objPlayer.velocity = PLAYER_VELOCITY_JUMP_RIGHT;
-	objPlayer.scale = 4.5f;
-	objPlayer.exitPos = platform.playerExitPos;
-
-	id = Play::CreateGameObject(TYPE_BOX, { platform.playerSpawnPos.x * TILE_SIZE, platform.playerSpawnPos.y * TILE_SIZE - PLAYER_OFFSET_Y }, 10, "le_2Dbox");
-	GameObject& objBox = Play::GetGameObject(id);
-	objBox.scale = 3.f;
-	objBox.exitPos = platform.playerExitPos;
-
-	//flags.catActivated = true;	
-
-	for (int i = 0; i < platform.fleaQty; i++)
-	{
-		id = Play::CreateGameObject(TYPE_FLEA, { platform.FLEA_SPAWN_POS_X[i] * TILE_SIZE, platform.FLEA_SPAWN_POS_Y[i] * TILE_SIZE - FLEA_OFFSET_Y }, 10, "bug_right");
-		GameObject& objFlea = Play::GetGameObject(id);
-		objFlea.velocity = ENEMY_VELOCITY_FALL_RIGHT;
-		objFlea.state = platform.FLEA_STATES[i];
-		objFlea.scale = 0.5f;
-		objFlea.rotation = Play::DegToRad(-30);
-		objFlea.animSpeed = .05f;
-	}
 }
 
 void SpriteOrigins()
@@ -646,176 +120,6 @@ void CreateLobbyFlea()
 		objFlea.speed = 1.f;
 }
 
-// create the platform for a game level
-void CreatePlatform(Platform& platform)
-{
-	BuildSideWalls(platform);
-	PlacePlants(platform);
-
-	CreateFloors(platform.WATER_WIDTH, platform.WATER_POS_X, platform.WATER_POS_Y, 7.0f, "water_long", TYPE_WATER);
-
-	CreateFloors(platform.GROUND_FLOOR_WIDTH, platform.GROUND_FLOOR_POS_X, platform.GROUND_FLOOR_POS_Y, 2.5f, "the_ground", TYPE_GROUND);
-
-	//to decide which sprite to use.........
-	CreateFloors(platform.GRASS_WIDTH, platform.GRASS_FLOOR_POS_X, platform.GRASS_FLOOR_POS_Y, 2.5f, "heart_choco", TYPE_PLATFORM);
-	CreateFloors(platform.C_FLOOR_WIDTH, platform.C_FLOOR_POS_X, platform.C_FLOOR_POS_Y, 2.5f, "c_choco", TYPE_PLATFORM);
-	CreateFloors(platform.HEART_FLOOR_WIDTH, platform.HEART_FLOOR_POS_X, platform.HEART_FLOOR_POS_Y, 2.5f, "heart_choco", TYPE_PLATFORM);
-
-	CreateWalls(platform.HEART_WALL_WIDTH, platform.HEART_WALL_HEIGHT, platform.HEART_WALL_POS_X, platform.HEART_WALL_POS_Y, 2.5f, "heart_choco", TYPE_PLATFORM);
-	CreateWalls(platform.NUT_WALL_WIDTH, platform.NUT_WALL_HEIGHT, platform.NUT_WALL_POS_X, platform.NUT_WALL_POS_Y, 2.5f, "choco_nuts", TYPE_PLATFORM);
-
-	//to decide which sprite to use.........
-	CreateWalls(platform.DIRT_WIDTH, platform.DIRT_HEIGHT, platform.DIRT_POS_X, platform.DIRT_POS_Y, 2.5f, "jumpy_texture", TYPE_PLATFORM);
-
-	CreateWalls(platform.WAFFLE_WIDTH, platform.WAFFLE_HEIGHT, platform.WAFFLE_POS_X, platform.WAFFLE_POS_Y, 2.5f, "waff", TYPE_LADDER);
-}
-
-void CreateWalls(vector <int>& w, vector <int>& h, vector <int>& x, vector <int>& y, float scale, const char* s, int TYPE)
-{
-	int j = 0;
-
-	for (int height : h)
-	{
-		for (int width : w)
-		{
-			for (int i = 0; i < h[j]; i++)
-			{
-				for (int k = 0; k < w[j]; k++)
-				{
-					int id = Play::CreateGameObject(TYPE,
-						Point2D{ x[j] * TILE_SIZE + (TILE_SIZE * k) , y[j] * TILE_SIZE + (TILE_SIZE * i) - WALL_OFFSET }, 10, s);
-					Play::GetGameObject(id).scale = 2.5f;
-				}
-			}
-		}
-		j++;
-	}
-}
-
-void CreateFloors(vector <int>& w, vector <int>& x, vector <int>& y, float scale, const char* s, int TYPE)
-{
-	int j = 0;
-
-	int offset = (TYPE == TYPE_WATER) ? WATER_OFFSET_Y : FLOOR_OFFSET;
-
-
-	for (int width : w)
-	{
-		for (int i = 0; i < w[j]; i++)
-		{
-			int id = Play::CreateGameObject(TYPE,
-				Point2D{ (x[j] * TILE_SIZE) + (TILE_SIZE * i), y[j] * TILE_SIZE + offset }, 10, s);
-			Play::GetGameObject(id).scale = scale;
-			Play::GetGameObject(id).animSpeed = 0.1f;
-			if (TYPE == TYPE_WATER)
-			{
-				int id = Play::CreateGameObject(TYPE_PLATFORM,
-					Point2D{ (x[j] * TILE_SIZE) + (TILE_SIZE * i), y[j] * TILE_SIZE + WATER_OFFSET_Y + TILE_SIZE }, 10, "dirrt");
-				Play::GetGameObject(id).scale = 2.5f;
-			}
-		}
-		j++;
-	}
-}
-
-void BuildSideWalls(Platform& platform)
-{
-	for (int i = 0; i < platform.WALL_HEIGHT; i++)
-	{
-		int id = Play::CreateGameObject(TYPE_WALL,
-			Point2D{ (platform.LEFT_WALL_POS_X * TILE_SIZE) + platform.WALL_OFFSET.x, (TILE_SIZE * i) },
-			10, "left_side_wall");
-		Play::GetGameObject(id).scale = 2.5f;
-
-		int id2 = Play::CreateGameObject(TYPE_WALL,
-			Point2D{ (platform.RIGHT_WALL_POS_X * TILE_SIZE) - platform.WALL_OFFSET.x * 3 , (TILE_SIZE * i) - platform.WALL_OFFSET.y },
-			10, "right_side_wall");
-		Play::GetGameObject(id2).scale = 2.5f;
-	}
-}
-
-void PlacePlants(Platform& platform)
-{
-	for (int i = 0; i < platform.TREE_POS_X.size(); i++)
-	{
-
-		int id = Play::CreateGameObject(TYPE_TREE, { platform.TREE_POS_X[i] * TILE_SIZE, platform.TREE_POS_Y[i] * TILE_SIZE + TREE_OFFSET_Y }, 10, "new_tree");
-		Play::GetGameObject(id).scale = 1.5f;
-	}
-
-	for (int i = 0; i < platform.BUSH_POS_X.size(); i++)
-	{
-		int id = Play::CreateGameObject(TYPE_BUSH, { platform.BUSH_POS_X[i] * TILE_SIZE, platform.BUSH_POS_Y[i] * TILE_SIZE + BUSH_OFFSET_Y }, 10, "bush");
-		Play::GetGameObject(id).scale = 2.5f;
-	}
-}
-
-// place other items for a game level
-void ItemsPlacement(Platform& platform)
-{
-	for (int i = 0; i < platform.SALMON_POS_X.size(); i++)
-	{
-		int id = Play::CreateGameObject(
-			TYPE_TREAT,
-			Point2D{ platform.SALMON_POS_X[i] * TILE_SIZE, platform.SALMON_POS_Y[i] * TILE_SIZE },
-			10,
-			"croissant");
-		Play::GetGameObject(id).scale = 2.5f;
-		Play::GetGameObject(id).rotation = Randomize(Play::RandomRoll(360), 0.1);
-	}
-
-	for (int i = 0; i < platform.CHICKEN_POS_X.size(); i++)
-	{
-		int id = Play::CreateGameObject(
-			TYPE_TREAT,
-			Point2D{ platform.CHICKEN_POS_X[i] * TILE_SIZE, platform.CHICKEN_POS_Y[i] * TILE_SIZE },
-			10,
-			"apple");
-		Play::GetGameObject(id).scale = 2.f;
-	}
-
-	for (int i = 0; i < platform.BOX_POS_X.size(); i++)
-	{
-		int id = Play::CreateGameObject(
-			TYPE_PLATFORM,
-			Point2D{ platform.BOX_POS_X[i] * TILE_SIZE, platform.BOX_POS_Y[i] * TILE_SIZE - BOX_OFFSET_Y },
-			10,
-			"wood_box");
-		GameObject& box = Play::GetGameObject(id);
-		box.scale = 2.5f;
-	}
-
-	for (int i = 0; i < platform.FLOWER_POS_X.size(); i++)
-	{
-		Point2D pos = { platform.FLOWER_POS_X[i] * TILE_SIZE, platform.FLOWER_POS_Y[i] * TILE_SIZE };
-		int random = Play::RandomRoll(4);
-		int id = 0;
-
-		if (random == 1)
-		{
-			id = Play::CreateGameObject(TYPE_FLOWER, pos, 10, "yellow_flower");
-			Play::GetGameObject(id).scale = 2.5f;
-		}
-		else if (random == 2)
-		{
-			id = Play::CreateGameObject(TYPE_FLOWER, pos, 10, "violet_flower");
-			Play::GetGameObject(id).scale = 2.5f;
-		}
-		else if (random == 3)
-		{
-			id = Play::CreateGameObject(TYPE_FLOWER, pos, 10, "white_flower");
-			Play::GetGameObject(id).scale = 2.5f;
-		}
-		else
-		{
-			id = Play::CreateGameObject(TYPE_FLOWER, pos, 10, "pink_flower");
-			Play::GetGameObject(id).scale = 2.5f;
-		}
-
-		Play::GetGameObject(id).scale = 2.5f;
-	}
-}
-
 // camera movement 
 void CameraControl()
 {
@@ -828,9 +132,9 @@ void CameraControl()
 		cameraPos.x = objPlayer.pos.x - CAMERA_OFFSET_X;
 	}
 	else if (objPlayer.pos.x < CAMERA_THRESHOLD_X.x * TILE_SIZE)
-		cameraPos.x = (platform1.LIMIT_LEFT * TILE_SIZE) - TILE_SIZE;
+		cameraPos.x = leftLimit - TILE_SIZE;
 	else if (objPlayer.pos.x > CAMERA_THRESHOLD_X.y * TILE_SIZE)
-		cameraPos.x = (platform1.LIMIT_RIGHT * TILE_SIZE) - (TILE_WIDTH * TILE_SIZE) + 5;
+		cameraPos.x = rightLimit - (TILE_WIDTH * TILE_SIZE) + 5;
 	else
 		cameraPos = { objPlayer.pos.x - CAMERA_OFFSET_X, 0 };
 
@@ -849,8 +153,8 @@ void SetPlayerPos(int pos)
 		objPlayer.pos.y = PLAYER_START_POS.y * TILE_SIZE - PLAYER_OFFSET_Y :
 		objPlayer.pos.y = pos - PLAYER_OFFSET_Y;
 
-	if (objPlayer.pos.y > 601.f)
-		objPlayer.pos.y = 601.f;
+	if (objPlayer.pos.y > BOTTOM_LINE)
+		objPlayer.pos.y = BOTTOM_LINE;
 }
 
 // set the floor according to the player pos
@@ -934,7 +238,7 @@ void UpdateGameStates()
 
 		if (Play::KeyDown(VK_RETURN))
 		{
-			CreateGamePlay();
+			LoadLevel();
 			gameState.state = STATE_PLAY;
 		}
 		break;
@@ -946,7 +250,7 @@ void UpdateGameStates()
 		{
 			gameState.level = 1;
 			RestartGame();
-			CreateGamePlay();
+			LoadLevel();
 			gameState.state = STATE_PLAY;
 		}
 		break;
@@ -959,9 +263,9 @@ void UpdateGameStates()
 
 	if (flags.levelPassed)
 	{
-		gameState.level++;
+    	gameState.level++;
 		RestartGame();
-		CreateGamePlay();
+		LoadLevel();
 		gameState.state = STATE_PLAY;
 		flags.levelPassed = false;
 	}
@@ -984,13 +288,6 @@ void UpdatePlayer()
 {
 	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
 	SetFloor();
-
-	/*if (flags.catActivated)
-	{
-		objPlayer.velocity = PLAYER_VELOCITY_JUMP_RIGHT;
-		gameState.playerState = STATE_JUMP;
-		flags.catActivated = false;
-	}*/
 
 	switch (gameState.playerState)
 	{
@@ -1018,6 +315,7 @@ void UpdatePlayer()
 	case STATE_ATTACHED:
 	{
 		AttachedPlayerControls();
+
 		break;
 	}
 	case STATE_HISS:
@@ -1050,6 +348,7 @@ void UpdateFleas()
 {
 	vector <int> vFleas = Play::CollectGameObjectIDsByType(TYPE_FLEA);
 	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
+
 
 	for (int fleaId : vFleas)
 	{
@@ -1180,7 +479,7 @@ void UpdateTreats()
 	{
 		flags.isBoxExit = true;
 		GameObject& objBox = Play::GetGameObjectByType(TYPE_BOX);
-		objBox.pos = { objBox.exitPos.x * TILE_SIZE, objBox.exitPos.y * TILE_SIZE - PLAYER_OFFSET_Y };
+		objBox.pos = gameState.exitPos;
 		objBox.frame = 2;
 	}
 
@@ -1190,7 +489,7 @@ void UpdateTreats()
 
 		if (IsPlayerColliding(treat))
 		{
-			gameState.score += 10;
+			gameState.score += TREAT_SCORE;
 			gameState.treats++;
 			Play::DestroyGameObject(treatId);
 		}
@@ -1203,7 +502,7 @@ void UpdateTreats()
 
 		if (IsPlayerColliding(flower))
 		{
-			gameState.score += 30;
+			gameState.score += FLOWER_SCORE;
 			Play::DestroyGameObject(flowerId);
 		}
 		Play::UpdateGameObject(flower);
@@ -1532,9 +831,16 @@ void AttachedPlayerControls()
 
 	t.idleTimer += DELTA_TIME;
 
+	if (!IsPlayerCollidingLadder)
+		gameState.playerState = STATE_FALL;
+
+
 	// if player is not standing on ladder or colliding with ladder, then fall
 	if (!IsPlayerCollidingLadder() && !IsPlayerOnLadder())
+	{
 		gameState.playerState = STATE_FALL;
+		return;
+	}
 
 	if (gameState.floor == 2 && objPlayer.pos.y <= platform1.LADDER_TOP_FLOOR_SECOND + LADDER_OFFSET_Y
 		|| gameState.floor == 3 && objPlayer.pos.y <= platform1.LADDER_TOP_FLOOR_THIRD + LADDER_OFFSET_Y
@@ -1689,7 +995,6 @@ void WalkingFlea(GameObject& flea)
 
 void FallingFlea(GameObject& flea)
 {
-
 	if (IsFleaCollidingAnyPlatform(flea))
 	{
 		flea.velocity = { 0.f, 0.f };
@@ -1717,6 +1022,9 @@ void FleaJump(GameObject& flea)
 	t.jumpTimer += DELTA_TIME;
 
 	flea.rotation = Play::DegToRad(-30);
+
+	if (flea.pos.y > DISPLAY_HEIGHT)
+		flea.pos = { leftLimit, 0 };
 
 	(flea.velocity.y < 0) ?
 		flea.velocity += GRAVITY * FALL_MULTIPLIER * DELTA_TIME :
@@ -2163,7 +1471,7 @@ bool IsPlayerCollidingBottomPart(const GameObject& object)
 	}
 	}
 
-	if (objPlayer.pos.y + 10 < object.pos.y + AABB.y &&
+	if (objPlayer.pos.y < object.pos.y + AABB.y &&
 		objPlayer.pos.y + PLAYER_AABB_BOTTOM.y > object.pos.y - AABB.y)
 	{
 		if (objPlayer.pos.x > object.pos.x - AABB.x - COLLISION_BOOST &&
@@ -2283,10 +1591,10 @@ bool IsFleaColliding(GameObject& flea, const GameObject& object)
 // if object is out of x bounds , loop it to the other side
 void LoopObject(GameObject& object)
 {
-	if (object.pos.x < platform1.LIMIT_LEFT * TILE_SIZE)
-		object.pos.x = platform1.LIMIT_RIGHT * TILE_SIZE;
-	else if (object.pos.x > platform1.LIMIT_RIGHT * TILE_SIZE)
-		object.pos.x = platform1.LIMIT_LEFT * TILE_SIZE;
+	if (object.pos.x < leftLimit )
+		object.pos.x = rightLimit;
+	else if (object.pos.x > rightLimit )
+		object.pos.x = leftLimit;
 }
 
 // helper functions
@@ -2389,7 +1697,7 @@ void DrawDebugInfo()
 	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
 
 	vector <int> vFleas = Play::CollectGameObjectIDsByType(TYPE_FLEA);
-	//GameObject& f1 = Play::GetGameObject(vFleas[0]);
+	GameObject& f1 = Play::GetGameObject(vFleas[0]);
 	//GameObject& f2 = Play::GetGameObject(vFleas[1]);
 
 	/*vector <int> vRightFlies = Play::CollectGameObjectIDsByType(TYPE_RIGHT_FLY);
@@ -2406,19 +1714,19 @@ void DrawDebugInfo()
 
 	Play::SetDrawingSpace(Play::SCREEN);
 
-	//Play::DrawFontText("64px", "flea1: " + std::to_string(f1.acceleration.y), { DISPLAY_WIDTH - 10, 50 }, Play::RIGHT);
+	Play::DrawFontText("64px", "flea1: " + std::to_string(f1.pos.y), { DISPLAY_WIDTH - 10, 250 }, Play::RIGHT);
 	//Play::DrawFontText("64px", "flea2: " + std::to_string(f2.acceleration.y), { DISPLAY_WIDTH - 10, 100 }, Play::RIGHT);
 
-	Play::DrawFontText("64px", "cat state: " + std::to_string(gameState.playerState), { DISPLAY_WIDTH - 10, 150 }, Play::RIGHT);
-	Play::DrawFontText("64px", "cat vy: " + std::to_string(objPlayer.velocity.y), { DISPLAY_WIDTH - 10 , 200 }, Play::RIGHT);
-	Play::DrawFontText("64px", "cat px: " + std::to_string(objPlayer.pos.x), { DISPLAY_WIDTH - 10, 250 }, Play::RIGHT);
+	//Play::DrawFontText("64px", "cat state: " + std::to_string(gameState.playerState), { DISPLAY_WIDTH - 10, 150 }, Play::RIGHT);
+	//Play::DrawFontText("64px", "cat vy: " + std::to_string(objPlayer.velocity.y), { DISPLAY_WIDTH - 10 , 200 }, Play::RIGHT);
+	//Play::DrawFontText("64px", "cat px: " + std::to_string(objPlayer.pos.x), { DISPLAY_WIDTH - 10, 250 }, Play::RIGHT);
 
 	//Play::DrawFontText("105px", "Score: " + std::to_string(gameState.score), { DISPLAY_WIDTH / 2 , 50 }, Play::CENTRE);
 
-	Play::DrawFontText("64px", "box exit: " + std::to_string(objBox.exitPos.x), { DISPLAY_WIDTH - 10, 300 }, Play::RIGHT);
+	//Play::DrawFontText("64px", "box exit: " + std::to_string(objBox.exitPos.x), { DISPLAY_WIDTH - 10, 300 }, Play::RIGHT);
 	//Play::DrawFontText("64px", "grounded: " + std::to_string(flags.isGrounded ), { DISPLAY_WIDTH- 10, 350 }, Play::RIGHT);
-	Play::DrawFontText("64px", "Fly1 px: " + std::to_string(fly1.pos.x), { DISPLAY_WIDTH - 10, 400 }, Play::RIGHT);
-	Play::DrawFontText("64px", "Fly2 px: " + std::to_string(fly2.pos.x), { DISPLAY_WIDTH - 10, 450 }, Play::RIGHT);
+	//Play::DrawFontText("64px", "Fly1 px: " + std::to_string(fly1.pos.x), { DISPLAY_WIDTH - 10, 400 }, Play::RIGHT);
+	//Play::DrawFontText("64px", "Fly2 px: " + std::to_string(fly2.pos.x), { DISPLAY_WIDTH - 10, 450 }, Play::RIGHT);
 
 	Play::SetDrawingSpace(Play::WORLD);
 }
@@ -2586,7 +1894,8 @@ void LoadLevel(void)
 		Play::DestroyGameObject(id_obj);
 
 	std::ifstream levelfile;
-	levelfile.open("Level.lev");
+
+	levelfile.open(levelList.at(gameState.level - 1));
 
 	std::string sType, sX, sY, sSprite, sRot;
 
@@ -2601,14 +1910,11 @@ void LoadLevel(void)
 
 		int id = -1;
 
-		// Each type is detected and loaded separately
-
 		if (sType == "TYPE_PLAYER")
 		{
 			id = Play::CreateGameObject(TYPE_PLAYER, { std::stof(sX) - 30, std::stof(sY) }, 0, sSprite.c_str());
 			GameObject& objPlayer = Play::GetGameObject(id);
 			objPlayer.velocity = PLAYER_VELOCITY_JUMP_RIGHT;
-			//objPlayer.exitPos = platform.playerExitPos;
 			objPlayer.scale = PLAYER_SCALE;
 		}
 		
@@ -2617,7 +1923,7 @@ void LoadLevel(void)
 			id = Play::CreateGameObject(TYPE_FLEA, { std::stof(sX), std::stof(sY) }, 0, sSprite.c_str());
 			GameObject& objFlea = Play::GetGameObject(id);
 			objFlea.velocity = ENEMY_VELOCITY_FALL_RIGHT;
-			//objFlea.state = platform.FLEA_STATES[i];
+			objFlea.state = STATE_WALK;
 			objFlea.scale = FLEA_SCALE;
 			objFlea.rotation = Play::DegToRad(-30);
 			objFlea.animSpeed = .05f;
@@ -2627,11 +1933,9 @@ void LoadLevel(void)
 		{
 			id = Play::CreateGameObject(TYPE_BOX, { std::stof(sX), std::stof(sY) }, 0, sSprite.c_str());
 			GameObject& objBox = Play::GetGameObject(id);
-			//objBox.exitPos = platform.playerExitPos;
 			objBox.scale = BOX_SCALE;
 		}
 
-		
 		if (sType == "TYPE_PLATFORM")
 		{
 			id = Play::CreateGameObject(TYPE_PLATFORM, { std::stof(sX), std::stof(sY) }, 0, sSprite.c_str());
@@ -2677,7 +1981,14 @@ void LoadLevel(void)
 		if (sType == "TYPE_WALL")
 		{
 			id = Play::CreateGameObject(TYPE_WALL, { std::stof(sX), std::stof(sY) }, 0, sSprite.c_str());
-			Play::GetGameObject(id).scale = SCALE;
+			GameObject& objWall = Play::GetGameObject(id);
+			objWall.scale = SCALE;
+			
+			if (objWall.pos.x < 0)
+				leftLimit = objWall.pos.x + WALL_LIMIT_OFFSET;
+			else if (objWall.pos.x > 0)
+				rightLimit = objWall.pos.x - WALL_LIMIT_OFFSET;
+
 		}
 
 		if (sType == "TYPE_FLOWER")
@@ -2685,10 +1996,41 @@ void LoadLevel(void)
 			id = Play::CreateGameObject(TYPE_FLOWER, { std::stof(sX), std::stof(sY) }, 0, sSprite.c_str());
 			Play::GetGameObject(id).scale = SCALE;
 		}
+
+		if (sType == "TYPE_EXIT")
+			gameState.exitPos = { std::stof(sX), std::stof(sY) };
+
 	}
 
 	levelfile.close();
+
 }
+
+void CreateLevelList()
+{
+	int count = 0;
+	bool finished = false;
+
+	while (!finished)
+	{
+		std::string fname = "Level";
+		if (count > 0) fname += std::to_string(count);
+		fname += ".lev";
+
+		//check if level file exists
+		if (std::filesystem::exists(fname))
+		{
+			levelList.push_back(fname);
+			count++;
+		}
+		else
+		{
+			finished = true;
+		}
+	}
+}
+
+
 
 
 
