@@ -215,7 +215,6 @@ struct GameState
 	int score{ 0 };
 	int level{ 1 };
 	int lives{ 9 };
-	int highScore{ 0 };
 	int floor{ 0 };
 	int treats{ 0 };
 	Point2D exitPos{  };

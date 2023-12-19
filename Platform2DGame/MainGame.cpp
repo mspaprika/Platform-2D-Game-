@@ -23,7 +23,7 @@ Platform platform3;
 Platform platform4;
 Platform platform5;
 
-static std::vector<std::string> levelList;
+std::vector<std::string> levelList;
 
 
 // The entry point for a PlayBuffer program
@@ -131,10 +131,10 @@ void CameraControl()
 		cameraPos.y -= CAMERA_THRESHOLD_Y * TILE_SIZE - objPlayer.pos.y;
 		cameraPos.x = objPlayer.pos.x - CAMERA_OFFSET_X;
 	}
-	else if (objPlayer.pos.x < CAMERA_THRESHOLD_X.x * TILE_SIZE)
+	/*else if (objPlayer.pos.x < CAMERA_THRESHOLD_X.x * TILE_SIZE)
 		cameraPos.x = leftLimit - TILE_SIZE;
 	else if (objPlayer.pos.x > CAMERA_THRESHOLD_X.y * TILE_SIZE)
-		cameraPos.x = rightLimit - (TILE_WIDTH * TILE_SIZE) + 5;
+		cameraPos.x = rightLimit - (TILE_WIDTH * TILE_SIZE) + 5;*/
 	else
 		cameraPos = { objPlayer.pos.x - CAMERA_OFFSET_X, 0 };
 
@@ -210,59 +210,67 @@ void UpdateGameStates()
 {
 	switch (gameState.state)
 	{
-	case STATE_PLAY:
-	{
-		UpdatePlayer();
-		UpdateFleas();
-		UpdateTreats();
-		UpdatePoo();
-		UpdateFlies();
-		UpdateWater();
-		UpdateStars();
-		UpdateBox();
-		Draw();
-		break;
-	}
-	case STATE_PAUSE:
-	{
-		DrawLobby();
-		if (Play::KeyDown(VK_RETURN))
+		case STATE_PLAY:
 		{
-			gameState.state = STATE_PLAY;
+			UpdatePlayer();
+			UpdateFleas();
+			UpdateTreats();
+			UpdatePoo();
+			UpdateFlies();
+			UpdateWater();
+			UpdateStars();
+			UpdateBox();
+			Draw();
+			break;
 		}
-		break;
-	}
-	case STATE_LOBBY:
-	{
-		DrawLobby();
+		case STATE_PAUSE:
+		{
+			DrawLobby();
+			if (Play::KeyDown(VK_RETURN))
+			{
+				gameState.state = STATE_PLAY;
+			}
+			break;
+		}
+		case STATE_LOBBY:
+		{
+			DrawLobby();
 
-		if (Play::KeyDown(VK_RETURN))
-		{
-			LoadLevel();
-			gameState.state = STATE_PLAY;
+			if (Play::KeyDown(VK_RETURN))
+			{
+				LoadLevel();
+				gameState.state = STATE_PLAY;
+			}
+			break;
 		}
-		break;
-	}
-	case STATE_GAMEOVER:
-	{
-		DrawLobby();
-		if (Play::KeyDown(VK_RETURN))
+		case STATE_GAMEOVER:
 		{
-			gameState.level = 1;
-			RestartGame();
-			LoadLevel();
-			gameState.state = STATE_PLAY;
+			DrawLobby();
+			if (Play::KeyDown(VK_RETURN))
+			{
+				gameState.level = 1;
+				RestartGame();
+				LoadLevel();
+				gameState.state = STATE_PLAY;
+			}
+			break;
 		}
-		break;
-	}
-	case STATE_VICTORY:
-	{
-		break;
-	}
+		case STATE_VICTORY:
+		{
+			DrawVictory();
+			break;
+		}
 	}
 
 	if (flags.levelPassed)
 	{
+		if (gameState.level == levelList.size())
+		{
+			gameState.state = STATE_VICTORY;
+			flags.levelPassed = false;
+			return;
+		}
+
     	gameState.level++;
 		RestartGame();
 		LoadLevel();
@@ -279,6 +287,7 @@ void UpdateGameStates()
 	{
 		gameState.level = 1;
 		RestartGame();
+		CreateLobby();
 		gameState.state = STATE_LOBBY;
 	}
 }
@@ -487,7 +496,7 @@ void UpdateTreats()
 	{
 		GameObject& treat = Play::GetGameObject(treatId);
 
-		if (IsPlayerColliding(treat))
+		if (IsPlayerCollidingUpperPart(treat))
 		{
 			gameState.score += TREAT_SCORE;
 			gameState.treats++;
@@ -500,7 +509,7 @@ void UpdateTreats()
 	{
 		GameObject& flower = Play::GetGameObject(flowerId);
 
-		if (IsPlayerColliding(flower))
+		if (IsPlayerCollidingUpperPart(flower))
 		{
 			gameState.score += FLOWER_SCORE;
 			Play::DestroyGameObject(flowerId);
@@ -569,14 +578,14 @@ void UpdateWater()
 
 		if (IsPlayerColliding(water))
 		{
-			int id = Play::CreateGameObject(TYPE_SPLASH, { water.pos.x + 20, water.pos.y - 40 }, 10, "water_splash");
+			int id = Play::CreateGameObject(TYPE_SPLASH, { water.pos.x + 20, water.pos.y - 40 }, 10, "splash");
 			GameObject& splash = Play::GetGameObject(id);
 			splash.scale = 2.5f;
 			splash.animSpeed = 0.1f;
 			flags.splashed = true;
 			gameState.lives--;
 			ResetPlayer();
-			objPlayer.pos = objPlayer.exitPos * TILE_SIZE;
+			objPlayer.pos = objPlayer.rebornPos;
 
 			(gameState.lives > 0) ? gameState.playerState = STATE_REBORN : gameState.playerState = STATE_DEAD;
 		}
@@ -1228,6 +1237,7 @@ void Reborn()
 {
 	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
 	t.rebornTimer += DELTA_TIME;
+	objPlayer.acceleration.y = 0.f;
 
 	if (t.rebornTimer < 1.2f)
 	{
@@ -1237,6 +1247,8 @@ void Reborn()
 	{
 		t.rebornTimer = 0.f;
 		gameState.playerState = STATE_GROUNDED;
+		objPlayer.pos = objPlayer.rebornPos;
+		flags.right = true;
 	}
 }
 
@@ -1420,9 +1432,21 @@ bool IsPlayerCollidingUpperPart(const GameObject& object)
 		break;
 	}
 	case TYPE_FLEA:
+	{
 		AABB = ENEMY_AABB;
 		break;
 	}
+	case TYPE_TREAT:
+	{
+		AABB = TREATS_AABB;
+		break;
+	}
+	case TYPE_FLOWER:
+	{
+		AABB = TREATS_AABB;
+		break;
+	}
+}
 
 	if (flags.right)
 	{
@@ -1697,7 +1721,7 @@ void DrawDebugInfo()
 	GameObject& objPlayer = Play::GetGameObjectByType(TYPE_PLAYER);
 
 	vector <int> vFleas = Play::CollectGameObjectIDsByType(TYPE_FLEA);
-	GameObject& f1 = Play::GetGameObject(vFleas[0]);
+	//GameObject& f1 = Play::GetGameObject(vFleas[0]);
 	//GameObject& f2 = Play::GetGameObject(vFleas[1]);
 
 	/*vector <int> vRightFlies = Play::CollectGameObjectIDsByType(TYPE_RIGHT_FLY);
@@ -1705,8 +1729,8 @@ void DrawDebugInfo()
 	GameObject& fly1 = Play::GetGameObject(vRightFlies[0]);
 	GameObject& fly2 = Play::GetGameObject(vLeftFlies[0]);*/
 
-	GameObject& fly1 = Play::GetGameObjectByType(TYPE_RIGHT_FLY);
-	GameObject& fly2 = Play::GetGameObjectByType(TYPE_LEFT_FLY);
+	//GameObject& fly1 = Play::GetGameObjectByType(TYPE_RIGHT_FLY);
+	//GameObject& fly2 = Play::GetGameObjectByType(TYPE_LEFT_FLY);
 
 
 	GameObject& objBox = Play::GetGameObjectByType(TYPE_BOX);
@@ -1714,12 +1738,12 @@ void DrawDebugInfo()
 
 	Play::SetDrawingSpace(Play::SCREEN);
 
-	Play::DrawFontText("64px", "flea1: " + std::to_string(f1.pos.y), { DISPLAY_WIDTH - 10, 250 }, Play::RIGHT);
+	//Play::DrawFontText("64px", "flea1: " + std::to_string(f1.pos.y), { DISPLAY_WIDTH - 10, 250 }, Play::RIGHT);
 	//Play::DrawFontText("64px", "flea2: " + std::to_string(f2.acceleration.y), { DISPLAY_WIDTH - 10, 100 }, Play::RIGHT);
 
 	//Play::DrawFontText("64px", "cat state: " + std::to_string(gameState.playerState), { DISPLAY_WIDTH - 10, 150 }, Play::RIGHT);
-	//Play::DrawFontText("64px", "cat vy: " + std::to_string(objPlayer.velocity.y), { DISPLAY_WIDTH - 10 , 200 }, Play::RIGHT);
-	//Play::DrawFontText("64px", "cat px: " + std::to_string(objPlayer.pos.x), { DISPLAY_WIDTH - 10, 250 }, Play::RIGHT);
+	Play::DrawFontText("64px", "cat vy: " + std::to_string(objPlayer.velocity.y), { DISPLAY_WIDTH - 10 , 200 }, Play::RIGHT);
+	Play::DrawFontText("64px", "cat a: " + std::to_string(objPlayer.acceleration.y), { DISPLAY_WIDTH - 10, 250 }, Play::RIGHT);
 
 	//Play::DrawFontText("105px", "Score: " + std::to_string(gameState.score), { DISPLAY_WIDTH / 2 , 50 }, Play::CENTRE);
 
@@ -1790,6 +1814,18 @@ void DrawLobby()
 	Play::PresentDrawingBuffer();
 }
 
+void DrawVictory()
+{
+	Play::ClearDrawingBuffer(Play::cWhite);
+
+	Play::DrawBackground(3);
+
+	Play::DrawFontText("151px", "Victory !!!", { 500, 230 }, Play::CENTRE);
+	Play::DrawFontText("64px", ". . .Tab to restart game. . .", { 500, 310 }, Play::CENTRE);
+
+	Play::PresentDrawingBuffer();
+}
+
 void UpdateLobby()
 {
 	GameObject& objCat = Play::GetGameObjectByType(TYPE_LOBBY_CAT);
@@ -1854,6 +1890,9 @@ void DestroyAllObjects()
 	DestroyObjectsOfType(TYPE_PLAYER);
 	DestroyObjectsOfType(TYPE_STAR);
 	DestroyObjectsOfType(TYPE_SPLASH);
+	DestroyObjectsOfType(TYPE_LOBBY_FLEA);
+	DestroyObjectsOfType(TYPE_LOBBY_CAT);
+	
 }
 
 void DestroyObjectsOfType(int TYPE)
@@ -1914,6 +1953,7 @@ void LoadLevel(void)
 		{
 			id = Play::CreateGameObject(TYPE_PLAYER, { std::stof(sX) - 30, std::stof(sY) }, 0, sSprite.c_str());
 			GameObject& objPlayer = Play::GetGameObject(id);
+			objPlayer.rebornPos = { std::stof(sX) + 100, std::stof(sY) };
 			objPlayer.velocity = PLAYER_VELOCITY_JUMP_RIGHT;
 			objPlayer.scale = PLAYER_SCALE;
 		}
@@ -1958,6 +1998,7 @@ void LoadLevel(void)
 		{
 			id = Play::CreateGameObject(TYPE_WATER, { std::stof(sX), std::stof(sY) }, 0, sSprite.c_str());
 			Play::GetGameObject(id).scale = WATER_SCALE;
+			Play::GetGameObject(id).animSpeed = 0.1f;
 		}
 
 		if (sType == "TYPE_TREE")
@@ -2024,9 +2065,7 @@ void CreateLevelList()
 			count++;
 		}
 		else
-		{
 			finished = true;
-		}
 	}
 }
 

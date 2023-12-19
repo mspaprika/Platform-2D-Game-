@@ -1507,7 +1507,7 @@ struct GameObject
 	Point2D platformPos{ 0.0f, 0.0f };
 	bool activated{ false };
 	float speed{ 0.0f };
-	Point2D exitPos{ 0.0f, 0.0f };
+	Point2D rebornPos{ 0.0f, 0.0f };
 
 
 	// Add your own data members here if you want to
