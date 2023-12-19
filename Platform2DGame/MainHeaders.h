@@ -19,6 +19,7 @@ void DrawLobby();
 void DrawObjectsOfType(int TYPE);
 void DrawRect(const GameObject& object, Vector2D AABB);
 void UpdateLobby();
+void DrawVictory();
 
 void CoordsPlatform1();
 void CoordsPlatform2();
